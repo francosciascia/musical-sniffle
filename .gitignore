@@ -1,0 +1,31 @@
+# Compiled / build
+target/
+*.class
+*.jar
+*.war
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Frontend (cuando lo agreguemos)
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Env
+.env
+.env.*
