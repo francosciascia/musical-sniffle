@@ -4,6 +4,8 @@ import com.musicalsniffle.config.EstacionamientoProperties;
 import com.musicalsniffle.dto.AutoRequest;
 import com.musicalsniffle.dto.CalculoResponse;
 import com.musicalsniffle.dto.EstadiaResponse;
+import com.musicalsniffle.dto.PlazaEstadoResponse;
+import com.musicalsniffle.dto.TicketResponse;
 import com.musicalsniffle.model.Auto;
 import com.musicalsniffle.model.Cliente;
 import com.musicalsniffle.model.Estadia;
@@ -17,9 +19,10 @@ import com.musicalsniffle.repository.AutoRepository;
 import com.musicalsniffle.repository.ClienteRepository;
 import com.musicalsniffle.repository.EstadiaRepository;
 import com.musicalsniffle.repository.PlazaRepository;
-import com.musicalsniffle.dto.TicketResponse;
+import com.musicalsniffle.repository.TicketRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -39,14 +42,75 @@ public class EstacionamientoService {
     private final TicketService ticketService;
     private final ClienteRepository clienteRepository;
     private final EstacionamientoProperties estacionamientoProperties;
+    private final TicketRepository ticketRepository;
 
     @Transactional(readOnly = true)
     public List<Auto> listarAutos() {
         return autoRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
+    public List<Auto> listarAutosCliente(Long clienteId) {
+        return autoRepository.findByClienteId(clienteId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EstadiaResponse> listarEstadiasActivas() {
+        return estadiaRepository.findByEstado(EstadoEstadia.ABIERTA).stream()
+                .map(estadia -> {
+                    TicketResponse ticket = ticketRepository.findByEstadiaId(estadia.getId())
+                            .map(TicketResponse::from)
+                            .orElse(null);
+                    return EstadiaResponse.from(estadia, ticket);
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public EstadiaResponse buscarEstadiaActivaPorPatente(String patente) {
+        Estadia estadia = estadiaRepository
+                .findByAuto_PatenteIgnoreCaseAndEstado(patente, EstadoEstadia.ABIERTA)
+                .orElseThrow(() -> new IllegalArgumentException("No hay estadía activa para patente: " + patente));
+        TicketResponse ticket = ticketRepository.findByEstadiaId(estadia.getId())
+                .map(TicketResponse::from)
+                .orElse(null);
+        return EstadiaResponse.from(estadia, ticket);
+    }
+
+    @Transactional(readOnly = true)
+    public EstadiaResponse buscarEstadiaActivaPorTicket(String codigo) {
+        Estadia estadia = ticketRepository.findByCodigo(codigo)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket no encontrado: " + codigo))
+                .getEstadia();
+        if (estadia.getEstado() != EstadoEstadia.ABIERTA) {
+            throw new IllegalStateException("La estadía del ticket ya está cerrada");
+        }
+        return EstadiaResponse.from(estadia, TicketResponse.from(ticketRepository.findByCodigo(codigo).orElseThrow()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlazaEstadoResponse> listarEstadoPlazas() {
+        List<PlazaEstadoResponse> resultado = new ArrayList<>();
+        for (Plaza plaza : plazaRepository.findAll()) {
+            var estadiaAbierta = estadiaRepository.findByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA);
+            PlazaEstadoResponse.PlazaEstadoResponseBuilder builder = PlazaEstadoResponse.builder()
+                    .id(plaza.getId())
+                    .codigo(plaza.getCodigo())
+                    .activa(plaza.isActiva())
+                    .ocupada(estadiaAbierta.isPresent());
+            estadiaAbierta.ifPresent(estadia -> builder
+                    .patente(estadia.getAuto().getPatente())
+                    .estadiaId(estadia.getId()));
+            resultado.add(builder.build());
+        }
+        return resultado;
+    }
+
     @Transactional
     public Auto crearAuto(AutoRequest request, Persona operador) {
+        if (autoRepository.existsByPatenteIgnoreCase(request.getPatente())) {
+            throw new IllegalStateException("Ya existe un auto con patente: " + request.getPatente());
+        }
         Auto auto = Auto.builder()
                 .patente(request.getPatente())
                 .tipo(request.getTipo())
@@ -65,10 +129,26 @@ public class EstacionamientoService {
     }
 
     @Transactional
+    public Auto registrarAutoCliente(AutoRequest request, Cliente cliente) {
+        if (autoRepository.existsByPatenteIgnoreCase(request.getPatente())) {
+            throw new IllegalStateException("Ya existe un auto con patente: " + request.getPatente());
+        }
+
+        Auto auto = Auto.builder()
+                .patente(request.getPatente().toUpperCase())
+                .tipo(request.getTipo())
+                .cliente(cliente)
+                .build();
+
+        return autoRepository.save(auto);
+    }
+
+    @Transactional
     public EstadiaResponse registrarIngreso(Long autoId, Long plazaId, Long clienteId, Persona operador) {
         Auto auto = autoRepository.findById(autoId)
                 .orElseThrow(() -> new IllegalArgumentException("Auto no encontrado: " + autoId));
 
+        validarAutoSinEstadiaAbierta(auto);
         Optional<Reserva> reservaActiva = reservaService.buscarActivaPorAuto(autoId);
         Plaza plaza = resolverPlaza(plazaId, reservaActiva);
         validarPlazaLibre(plaza);
@@ -196,6 +276,14 @@ public class EstacionamientoService {
         estadiaRepository.findByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA)
                 .ifPresent(e -> {
                     throw new IllegalStateException("La plaza " + plaza.getCodigo() + " está ocupada");
+                });
+    }
+
+    private void validarAutoSinEstadiaAbierta(Auto auto) {
+        estadiaRepository.findByAutoAndEstado(auto, EstadoEstadia.ABIERTA)
+                .ifPresent(e -> {
+                    throw new IllegalStateException(
+                            "El auto " + auto.getPatente() + " ya tiene una estadía abierta (#" + e.getId() + ")");
                 });
     }
 }

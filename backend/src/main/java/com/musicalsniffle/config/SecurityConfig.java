@@ -30,10 +30,15 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**")
+                        .permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register/cliente").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("SUPER_ADMIN")
-                        .requestMatchers("/api/operador/**").hasAnyRole("OPERADOR", "SUPER_ADMIN")
                         .requestMatchers("/api/cliente/**").hasRole("CLIENTE")
+                        .requestMatchers("/api/operador/**").hasAnyRole("OPERADOR", "SUPER_ADMIN")
                         .requestMatchers("/api/autos/**", "/api/estadias/**", "/api/tickets/**")
                                 .hasAnyRole("OPERADOR", "SUPER_ADMIN")
                         .requestMatchers("/api/auth/me").authenticated()

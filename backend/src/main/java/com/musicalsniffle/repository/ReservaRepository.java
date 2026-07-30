@@ -40,4 +40,6 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
             @Param("fecha") LocalDate fecha);
 
     Optional<Reserva> findByClienteIdAndEstado(Long clienteId, EstadoReserva estado);
+
+    List<Reserva> findByEstadoAndFechaFinBefore(EstadoReserva estado, LocalDate fecha);
 }
