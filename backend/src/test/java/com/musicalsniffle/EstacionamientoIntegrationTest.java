@@ -67,6 +67,7 @@ class EstacionamientoIntegrationTest {
         AutoRequest request = new AutoRequest();
         request.setPatente(patente);
         request.setTipo(TipoVehiculo.AUTO);
+        request.setModelo("Test Model");
 
         String response = mockMvc.perform(post("/api/autos")
                         .header("Authorization", "Bearer " + adminToken)

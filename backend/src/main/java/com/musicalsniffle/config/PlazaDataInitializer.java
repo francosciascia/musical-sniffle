@@ -21,9 +21,13 @@ public class PlazaDataInitializer implements CommandLineRunner {
         }
 
         for (int i = 1; i <= 10; i++) {
+            int index = i - 1;
             plazaRepository.save(Plaza.builder()
                     .codigo("P-" + String.format("%02d", i))
                     .activa(true)
+                    .piso(1)
+                    .posX(index % 5)
+                    .posY(index / 5)
                     .build());
         }
     }

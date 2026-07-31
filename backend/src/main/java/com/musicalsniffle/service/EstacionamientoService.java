@@ -21,6 +21,7 @@ import com.musicalsniffle.repository.EstadiaRepository;
 import com.musicalsniffle.repository.PlazaRepository;
 import com.musicalsniffle.repository.TicketRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -89,18 +90,29 @@ public class EstacionamientoService {
     }
 
     @Transactional(readOnly = true)
-    public List<PlazaEstadoResponse> listarEstadoPlazas() {
+    public List<PlazaEstadoResponse> listarEstadoPlazas(Integer piso) {
         List<PlazaEstadoResponse> resultado = new ArrayList<>();
         for (Plaza plaza : plazaRepository.findAll()) {
+            if (piso != null && plaza.getPiso() != piso) {
+                continue;
+            }
             var estadiaAbierta = estadiaRepository.findByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA);
+            var reservaPlaza = reservaService.buscarActivaPorPlaza(plaza.getId());
+
             PlazaEstadoResponse.PlazaEstadoResponseBuilder builder = PlazaEstadoResponse.builder()
                     .id(plaza.getId())
                     .codigo(plaza.getCodigo())
                     .activa(plaza.isActiva())
-                    .ocupada(estadiaAbierta.isPresent());
+                    .piso(plaza.getPiso())
+                    .posX(plaza.getPosX())
+                    .posY(plaza.getPosY())
+                    .ocupada(estadiaAbierta.isPresent())
+                    .reservada(reservaPlaza.isPresent());
             estadiaAbierta.ifPresent(estadia -> builder
                     .patente(estadia.getAuto().getPatente())
                     .estadiaId(estadia.getId()));
+            reservaPlaza.ifPresent(reserva -> builder.reservaCliente(
+                    reserva.getCliente().getNombre() + " " + reserva.getCliente().getApellido()));
             resultado.add(builder.build());
         }
         return resultado;
@@ -114,6 +126,7 @@ public class EstacionamientoService {
         Auto auto = Auto.builder()
                 .patente(request.getPatente())
                 .tipo(request.getTipo())
+                .modelo(request.getModelo().trim())
                 .build();
         Auto guardado = autoRepository.save(auto);
 
@@ -137,6 +150,7 @@ public class EstacionamientoService {
         Auto auto = Auto.builder()
                 .patente(request.getPatente().toUpperCase())
                 .tipo(request.getTipo())
+                .modelo(request.getModelo().trim())
                 .cliente(cliente)
                 .build();
 
@@ -152,6 +166,7 @@ public class EstacionamientoService {
         Optional<Reserva> reservaActiva = reservaService.buscarActivaPorAuto(autoId);
         Plaza plaza = resolverPlaza(plazaId, reservaActiva);
         validarPlazaLibre(plaza);
+        validarPlazaDisponibleParaAuto(plaza, reservaActiva);
 
         boolean abonado = reservaActiva.isPresent();
         Cliente cliente = resolverCliente(clienteId, reservaActiva);
@@ -277,6 +292,24 @@ public class EstacionamientoService {
                 .ifPresent(e -> {
                     throw new IllegalStateException("La plaza " + plaza.getCodigo() + " está ocupada");
                 });
+    }
+
+    private void validarPlazaDisponibleParaAuto(Plaza plaza, Optional<Reserva> reservaAuto) {
+        if (plaza == null) {
+            return;
+        }
+
+        Optional<Reserva> reservaPlaza = reservaService.buscarActivaPorPlaza(plaza.getId());
+        if (reservaPlaza.isEmpty()) {
+            return;
+        }
+
+        if (reservaAuto.isPresent() && reservaPlaza.get().getId().equals(reservaAuto.get().getId())) {
+            return;
+        }
+
+        throw new IllegalStateException(
+                "La plaza " + plaza.getCodigo() + " está reservada para un abonado");
     }
 
     private void validarAutoSinEstadiaAbierta(Auto auto) {

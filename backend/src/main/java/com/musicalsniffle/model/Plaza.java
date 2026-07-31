@@ -30,4 +30,13 @@ public class Plaza {
 
     @Column(nullable = false)
     private boolean activa;
+
+    @Column(nullable = false)
+    private int piso;
+
+    @Column(name = "pos_x")
+    private Integer posX;
+
+    @Column(name = "pos_y")
+    private Integer posY;
 }

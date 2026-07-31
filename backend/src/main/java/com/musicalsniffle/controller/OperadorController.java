@@ -37,7 +37,8 @@ public class OperadorController {
     }
 
     @GetMapping("/plazas/estado")
-    public List<PlazaEstadoResponse> listarEstadoPlazas() {
-        return estacionamientoService.listarEstadoPlazas();
+    public List<PlazaEstadoResponse> listarEstadoPlazas(
+            @RequestParam(required = false) Integer piso) {
+        return estacionamientoService.listarEstadoPlazas(piso);
     }
 }

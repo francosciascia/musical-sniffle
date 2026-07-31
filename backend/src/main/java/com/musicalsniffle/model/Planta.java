@@ -2,14 +2,9 @@ package com.musicalsniffle.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,29 +13,23 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "autos")
+@Table(name = "plantas")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Auto {
+public class Planta {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String patente;
+    private int piso;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TipoVehiculo tipo;
-
-    @Column(nullable = false, length = 100)
-    private String modelo;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cliente_id")
-    private Cliente cliente;
+    /** JSON: [{ "col": 0, "row": 1, "tipo": "FORMA" }] */
+    @Column(name = "celdas", nullable = false, columnDefinition = "TEXT")
+    @Builder.Default
+    private String celdasJson = "[]";
 }

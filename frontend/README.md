@@ -1,17 +1,39 @@
-# Frontend
+# Frontend — Musical Sniffle
 
-Acá va a vivir la app de React. Todavía no está creada.
+App React del estacionamiento.
 
-Cuando lleguemos a esta parte, la vamos a armar paso a paso juntos.
+## Stack
 
-## Qué va a hacer el frontend
+| Librería | Para qué |
+|----------|----------|
+| **React** | UI con componentes |
+| **Vite** | Dev server + build |
+| **Material UI** | Botones, formularios, layout |
+| **React Konva** | Dibujar el mapa de plazas |
+| **Axios** | Llamadas HTTP al backend |
+| **React Router** | Navegación entre pantallas |
 
-- Mostrar la interfaz visual (pantallas, botones, formularios)
-- Llamar a la API del backend (`http://localhost:8080/api/...`)
-- Correr en `http://localhost:5173` (puerto típico de Vite + React)
+## Cómo correrlo
 
-## Stack previsto
+1. Levantá el backend (`docker compose up -d` + `.\mvnw.cmd spring-boot:run` en `backend/`)
+2. En esta carpeta:
 
-- React
-- Vite (herramienta para desarrollar y compilar React)
-- Fetch o axios para hablar con el backend
+```powershell
+npm run dev
+```
+
+Abrí http://localhost:5173
+
+Login de prueba: `admin@musicalsniffle.com` / `admin123`
+
+## Estructura
+
+```
+src/
+├── api/client.js          → Axios configurado
+├── components/ParkingMap  → Dibujos Konva
+├── pages/LoginPage        → /login
+├── pages/MapaPage         → /mapa
+├── App.jsx                → Rutas + tema MUI
+└── main.jsx               → Entrada de React
+```

@@ -51,6 +51,11 @@ public class ReservaService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<Reserva> buscarActivaPorPlaza(Long plazaId) {
+        return reservaRepository.findActivaByPlazaId(plazaId, EstadoReserva.ACTIVA, LocalDate.now());
+    }
+
+    @Transactional(readOnly = true)
     public ReservaResponse buscarActivaPorCliente(Long clienteId) {
         Reserva reserva = reservaRepository.findByClienteIdAndEstado(clienteId, EstadoReserva.ACTIVA)
                 .orElseThrow(() -> new IllegalArgumentException("El cliente no tiene reserva activa"));

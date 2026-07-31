@@ -15,4 +15,7 @@ public class AutoRequest {
 
     @NotNull
     private TipoVehiculo tipo;
+
+    @NotBlank
+    private String modelo;
 }
