@@ -8,7 +8,9 @@ import {
   DialogTitle,
   MenuItem,
   TextField,
+  Typography,
 } from '@mui/material'
+import { ArrowDownToLine } from 'lucide-react'
 import api from '../api/client'
 
 const TIPOS = ['AUTO', 'CAMIONETA', 'MOTO', 'CAMION']
@@ -41,19 +43,24 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
 
     try {
       const patenteNorm = patente.trim().toUpperCase()
-      let autoId
+      if (!patenteNorm) {
+        setError('Indicá la patente')
+        setLoading(false)
+        return
+      }
+      if (!modelo.trim()) {
+        setError('Indicá el modelo del auto')
+        setLoading(false)
+        return
+      }
 
+      let autoId
       const { data: autos } = await api.get('/autos')
       const existente = autos.find((a) => a.patente === patenteNorm)
 
       if (existente) {
         autoId = existente.id
       } else {
-        if (!modelo.trim()) {
-          setError('Indicá el modelo del auto')
-          setLoading(false)
-          return
-        }
         const { data: nuevo } = await api.post('/autos', {
           patente: patenteNorm,
           tipo,
@@ -62,14 +69,21 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
         autoId = nuevo.id
       }
 
-      await api.post('/estadias', null, {
-        params: { autoId, plazaId: plaza.id },
-      })
+      const params = { autoId }
+      if (plaza?.id) {
+        params.plazaId = plaza.id
+      }
+
+      const { data: estadia } = await api.post('/estadias', null, { params })
 
       handleClose()
-      onSuccess?.()
+      onSuccess?.(estadia)
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'No se pudo registrar el ingreso')
+      setError(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          'No se pudo registrar el ingreso',
+      )
     } finally {
       setLoading(false)
     }
@@ -78,15 +92,21 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle>Registrar ingreso — {plaza?.codigo}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+        <DialogTitle sx={{ pb: 1 }}>
+          {plaza ? `Ingreso · Plaza ${plaza.codigo}` : 'Registrar ingreso'}
           {plaza?.reservada && (
-            <Alert severity="warning">
-              Plaza reservada{plaza.reservaCliente ? ` para ${plaza.reservaCliente}` : ''}.
-              Solo puede ingresar el abonado.
-            </Alert>
+            <Typography variant="body2" color="warning.main" sx={{ mt: 0.5, fontWeight: 500 }}>
+              Plaza reservada
+              {plaza.reservaCliente ? ` · ${plaza.reservaCliente}` : ''}
+            </Typography>
           )}
-
+          {!plaza && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 400 }}>
+              Solo patente y modelo. La plaza es opcional.
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
 
           <TextField
@@ -95,17 +115,19 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
             onChange={(e) => setPatente(e.target.value.toUpperCase())}
             required
             autoFocus
+            inputProps={{ className: 'mono' }}
           />
           <TextField
-            label="Modelo del auto"
+            label="Modelo"
             value={modelo}
             onChange={(e) => setModelo(e.target.value)}
             placeholder="Ej: Toyota Corolla"
-            helperText="Obligatorio si el auto es nuevo en el sistema"
+            required
+            helperText="Obligatorio"
           />
           <TextField
             select
-            label="Tipo de vehículo"
+            label="Tipo"
             value={tipo}
             onChange={(e) => setTipo(e.target.value)}
           >
@@ -116,12 +138,17 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
             ))}
           </TextField>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
           <Button onClick={handleClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? 'Registrando...' : 'Registrar ingreso'}
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            startIcon={<ArrowDownToLine size={16} />}
+          >
+            {loading ? 'Registrando…' : 'Confirmar ingreso'}
           </Button>
         </DialogActions>
       </form>

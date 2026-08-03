@@ -116,8 +116,24 @@ export default function ReservasPage() {
 
   return (
     <AppLayout maxWidth="xl">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h5">Reservas mensuales</Typography>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 1.5,
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          mb: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+            Reservas mensuales
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Elegí un cliente de la lista (crealos en Clientes si falta).
+          </Typography>
+        </Box>
         <Button variant="contained" onClick={() => setDialogOpen(true)}>
           Nueva reserva
         </Button>
@@ -125,8 +141,8 @@ export default function ReservasPage() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
-      <TableContainer component={Paper}>
-        <Table size="small">
+      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+        <Table size="small" sx={{ minWidth: 720 }}>
           <TableHead>
             <TableRow>
               <TableCell>Cliente</TableCell>
@@ -177,6 +193,11 @@ export default function ReservasPage() {
             label="Cliente"
             value={form.clienteId}
             onChange={(e) => setForm({ ...form, clienteId: e.target.value, autoIds: [] })}
+            helperText={
+              clientes.length === 0
+                ? 'No hay clientes — crealos en el menú Clientes'
+                : undefined
+            }
           >
             {clientes.map((c) => (
               <MenuItem key={c.id} value={c.id}>

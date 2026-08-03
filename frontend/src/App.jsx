@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
+import { CssBaseline, ThemeProvider } from '@mui/material'
 import LoginPage from './pages/LoginPage'
 import MapaPage from './pages/MapaPage'
+import DashboardPage from './pages/DashboardPage'
 import EstadiasPage from './pages/EstadiasPage'
 import TarifasPage from './pages/TarifasPage'
 import ReservasPage from './pages/ReservasPage'
@@ -9,15 +10,10 @@ import HistorialPage from './pages/HistorialPage'
 import MisAutosPage from './pages/MisAutosPage'
 import MiReservaPage from './pages/MiReservaPage'
 import MapaEditorPage from './pages/MapaEditorPage'
+import ConfigPage from './pages/ConfigPage'
+import ClientesPage from './pages/ClientesPage'
 import { getRol, getToken, homePathForRol } from './utils/auth'
-
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: { main: '#1565c0' },
-  },
-})
-
+import { appTheme } from './theme/theme'
 
 function RoleRoute({ roles, children }) {
   if (!getToken()) return <Navigate to="/login" replace />
@@ -36,7 +32,7 @@ function HomeRedirect() {
 
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={appTheme}>
       <CssBaseline />
       <BrowserRouter>
         <Routes>
@@ -48,6 +44,14 @@ export default function App() {
             element={
               <RoleRoute roles={['OPERADOR', 'SUPER_ADMIN']}>
                 <MapaPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <RoleRoute roles={['OPERADOR', 'SUPER_ADMIN']}>
+                <DashboardPage />
               </RoleRoute>
             }
           />
@@ -64,6 +68,22 @@ export default function App() {
             element={
               <RoleRoute roles={['OPERADOR', 'SUPER_ADMIN']}>
                 <HistorialPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/clientes"
+            element={
+              <RoleRoute roles={['SUPER_ADMIN']}>
+                <ClientesPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/config"
+            element={
+              <RoleRoute roles={['SUPER_ADMIN']}>
+                <ConfigPage />
               </RoleRoute>
             }
           />

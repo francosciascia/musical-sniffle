@@ -31,6 +31,12 @@ public class UsuarioAdminController {
                 .toList();
     }
 
+    @PostMapping("/clientes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PersonaResponse registrarCliente(@Valid @RequestBody PersonaRequest request) {
+        return personaService.registrarCliente(request);
+    }
+
     @PostMapping("/operadores")
     @ResponseStatus(HttpStatus.CREATED)
     public PersonaResponse registrarOperador(@Valid @RequestBody OperadorRequest request) {

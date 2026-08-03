@@ -42,4 +42,6 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     Optional<Reserva> findByClienteIdAndEstado(Long clienteId, EstadoReserva estado);
 
     List<Reserva> findByEstadoAndFechaFinBefore(EstadoReserva estado, LocalDate fecha);
+
+    long countByEstado(EstadoReserva estado);
 }

@@ -5,8 +5,8 @@ export const TIPO_CELDA = {
 }
 
 export const COLORES_CELDA = {
-  FORMA: '#cfd8dc',
-  OBSTACULO: '#455a64',
+  FORMA: '#D4D1CA',
+  OBSTACULO: '#6E6E6E',
 }
 
 export function cellMapFromCeldas(celdas) {

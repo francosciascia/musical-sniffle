@@ -9,14 +9,7 @@ import {
   PLAZA_FONT,
   PLAZA_LABEL_Y,
 } from '../utils/plazaLayout'
-
-function plazaColor(plaza, selected) {
-  if (!plaza.activa) return '#bdbdbd'
-  if (plaza.ocupada) return '#ef5350'
-  if (plaza.reservada) return '#ff9800'
-  if (selected) return '#42a5f5'
-  return '#66bb6a'
-}
+import { colors, plazaFill, plazaStroke } from '../theme/colors'
 
 function plazaLabel(plaza) {
   if (plaza.ocupada) {
@@ -31,13 +24,12 @@ function plazaLabel(plaza) {
 
 export default function ParkingMap({ plazas, piso, celdasForma, selectedId, onSelectPlaza }) {
   const { width, height } = combinedStageSize(plazas, celdasForma)
-
   const positioned = positionPlazas(plazas)
 
   return (
     <Stage width={width} height={height}>
       <Layer>
-        <Rect x={0} y={0} width={width} height={height} fill="#fafafa" listening={false} />
+        <Rect x={0} y={0} width={width} height={height} fill={colors.mapCanvas} listening={false} />
         <FormaCells celdas={celdasForma} />
         <GridLines />
 
@@ -48,14 +40,14 @@ export default function ParkingMap({ plazas, piso, celdasForma, selectedId, onSe
             text={`PISO ${piso}`}
             fontSize={13}
             fontStyle="bold"
-            fill="#1565c0"
+            fill={colors.primary}
             listening={false}
           />
         )}
 
         {positioned.map((plaza) => {
           const selected = plaza.id === selectedId
-          const clickable = plaza.activa && !plaza.ocupada && onSelectPlaza
+          const clickable = !!onSelectPlaza
 
           return (
             <Rect
@@ -64,13 +56,13 @@ export default function ParkingMap({ plazas, piso, celdasForma, selectedId, onSe
               y={plaza.y}
               width={PLAZA_SIZE - PLAZA_INSET}
               height={PLAZA_SIZE - PLAZA_INSET}
-              cornerRadius={8}
-              fill={plazaColor(plaza, selected)}
-              stroke={selected ? '#0d47a1' : plaza.reservada ? '#e65100' : '#333'}
-              strokeWidth={selected ? 3 : 2}
+              cornerRadius={6}
+              fill={plazaFill(plaza, selected)}
+              stroke={plazaStroke(plaza, selected)}
+              strokeWidth={selected ? 3 : 1.5}
               onClick={() => clickable && onSelectPlaza(plaza)}
               onTap={() => clickable && onSelectPlaza(plaza)}
-              listening={!!clickable}
+              listening={clickable}
             />
           )
         })}
@@ -84,7 +76,7 @@ export default function ParkingMap({ plazas, piso, celdasForma, selectedId, onSe
             text={plazaLabel(plaza)}
             align="center"
             fontSize={PLAZA_FONT}
-            fill="#fff"
+            fill={colors.mapText}
             fontStyle="bold"
             listening={false}
           />
@@ -98,7 +90,7 @@ export default function ParkingMap({ plazas, piso, celdasForma, selectedId, onSe
             text={`Sin plazas en el piso ${piso}`}
             align="center"
             fontSize={14}
-            fill="#757575"
+            fill={colors.mapTextMuted}
             listening={false}
           />
         )}

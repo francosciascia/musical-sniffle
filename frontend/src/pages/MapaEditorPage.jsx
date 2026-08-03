@@ -7,14 +7,17 @@ import {
   CircularProgress,
   Collapse,
   Paper,
+  Stack,
   Tab,
   Tabs,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
-import MapGridEditor from '../components/MapGridEditor'
+import MapGridEditor, { HERRAMIENTA_PLAZAS } from '../components/MapGridEditor'
 import api from '../api/client'
 import { nextPlazaCodigos } from '../utils/plazaLayout'
 import {
@@ -25,16 +28,18 @@ import {
 } from '../utils/plantaForma'
 
 export default function MapaEditorPage() {
+  const navigate = useNavigate()
   const [plazas, setPlazas] = useState([])
   const [plantas, setPlantas] = useState([])
   const [pisoActual, setPisoActual] = useState(null)
-  const [selected, setSelected] = useState(null)
+  const [selectedIds, setSelectedIds] = useState([])
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [creando, setCreando] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [mostrarContorno, setMostrarContorno] = useState(false)
   const [herramienta, setHerramienta] = useState(TIPO_CELDA.FORMA)
+  const [herramientaPlazas, setHerramientaPlazas] = useState(HERRAMIENTA_PLAZAS.CREAR)
 
   const cargar = useCallback(async () => {
     setError('')
@@ -66,6 +71,10 @@ export default function MapaEditorPage() {
     }
   }, [pisos, pisoActual])
 
+  useEffect(() => {
+    setSelectedIds([])
+  }, [pisoActual, herramientaPlazas])
+
   const celdasForma = useMemo(
     () => (pisoActual != null ? celdasDelPiso(plantas, pisoActual) : []),
     [plantas, pisoActual],
@@ -74,6 +83,11 @@ export default function MapaEditorPage() {
   const plazasPiso = useMemo(
     () => (pisoActual != null ? plazas.filter((p) => p.piso === pisoActual) : []),
     [plazas, pisoActual],
+  )
+
+  const selectedPlazas = useMemo(
+    () => plazasPiso.filter((p) => selectedIds.includes(p.id)),
+    [plazasPiso, selectedIds],
   )
 
   const pisoGuardado = pisoActual != null && plantas.some((p) => p.piso === pisoActual)
@@ -139,7 +153,7 @@ export default function MapaEditorPage() {
     setCreando(true)
     setError('')
     setOk('')
-    setSelected(null)
+    setSelectedIds([])
 
     const codigos = nextPlazaCodigos(plazas, celdas.length)
 
@@ -184,48 +198,103 @@ export default function MapaEditorPage() {
     }
   }
 
-  async function eliminarPlaza(id) {
-    if (!window.confirm('¿Eliminar este lugar?')) return
-    setError('')
-    try {
-      await api.delete(`/admin/plazas/${id}`)
-      setSelected(null)
-      setOk('Lugar eliminado')
-      cargar()
-    } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo eliminar')
-    }
+  function handleSelectPlaza(plaza, { multi } = {}) {
+    setSelectedIds((prev) => {
+      if (multi) {
+        return prev.includes(plaza.id)
+          ? prev.filter((id) => id !== plaza.id)
+          : [...prev, plaza.id]
+      }
+      return [plaza.id]
+    })
   }
 
-  async function toggleActiva(plaza) {
-    try {
-      await api.put(`/admin/plazas/${plaza.id}`, {
-        codigo: plaza.codigo,
-        activa: !plaza.activa,
-        piso: plaza.piso,
-        posX: plaza.posX,
-        posY: plaza.posY,
-      })
-      cargar()
-    } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo actualizar')
+  function handleSelectPlazas(lista) {
+    setSelectedIds(lista.map((p) => p.id))
+  }
+
+  async function eliminarPlazas(lista) {
+    if (!lista?.length) return
+    const msg =
+      lista.length === 1
+        ? `¿Eliminar ${lista[0].codigo}?`
+        : `¿Eliminar ${lista.length} lugares seleccionados?`
+    if (!window.confirm(msg)) return
+
+    setError('')
+    setOk('')
+    let okCount = 0
+    let failCount = 0
+    for (const plaza of lista) {
+      try {
+        await api.delete(`/admin/plazas/${plaza.id}`)
+        okCount++
+      } catch {
+        failCount++
+      }
     }
+    setSelectedIds([])
+    if (okCount) setOk(`${okCount} lugar(es) eliminado(s)`)
+    if (failCount) setError(`${failCount} no se pudieron eliminar (¿ocupadas?)`)
+    await cargar()
+  }
+
+  async function toggleActivas(lista, activa) {
+    if (!lista?.length) return
+    setError('')
+    for (const plaza of lista) {
+      try {
+        await api.put(`/admin/plazas/${plaza.id}`, {
+          codigo: plaza.codigo,
+          activa,
+          piso: plaza.piso,
+          posX: plaza.posX,
+          posY: plaza.posY,
+        })
+      } catch (err) {
+        setError(err.response?.data?.error || 'No se pudo actualizar')
+      }
+    }
+    await cargar()
   }
 
   const modoEditor = mostrarContorno ? 'forma' : 'plazas'
 
   return (
     <AppLayout maxWidth="xl">
-      <Typography variant="h5" gutterBottom>
-        Diseñar estacionamiento
-      </Typography>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1}
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        justifyContent="space-between"
+        sx={{ mb: 1 }}
+      >
+        <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+          Diseñar estacionamiento
+        </Typography>
+        <Button
+          size="small"
+          startIcon={<ArrowLeft size={16} />}
+          onClick={() => navigate('/config')}
+        >
+          Volver a configuración
+        </Button>
+      </Stack>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        1) Creá y guardá cada piso · 2) Elegí un piso · 3) Arrastrá en la grilla para dibujar los
-        lugares (plazas).
+        1) Creá un piso · 2) Elegí herramienta · 3) Arrastrá sobre la grilla para crear, seleccionar
+        o borrar varios lugares a la vez.
       </Typography>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {ok && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setOk('')}>{ok}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+      {ok && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setOk('')}>
+          {ok}
+        </Alert>
+      )}
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>
@@ -271,10 +340,27 @@ export default function MapaEditorPage() {
             {(creando || guardando) && <CircularProgress size={22} />}
           </Box>
 
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            <strong>Piso {pisoActual}:</strong> arrastrá sobre la grilla para agregar lugares. Los
-            nombres se generan solos (P-01, P-02…).
-          </Typography>
+          {!mostrarContorno && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Herramienta de plazas
+              </Typography>
+              <ToggleButtonGroup
+                value={herramientaPlazas}
+                exclusive
+                onChange={(_, v) => v && setHerramientaPlazas(v)}
+                size="small"
+              >
+                <ToggleButton value={HERRAMIENTA_PLAZAS.CREAR}>Crear</ToggleButton>
+                <ToggleButton value={HERRAMIENTA_PLAZAS.SELECCIONAR}>Seleccionar</ToggleButton>
+                <ToggleButton value={HERRAMIENTA_PLAZAS.BORRAR}>Borrar</ToggleButton>
+              </ToggleButtonGroup>
+              <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+                Arrastrá un rectángulo sobre varios cuadros. En Seleccionar también podés usar
+                Shift/Ctrl + clic.
+              </Typography>
+            </Box>
+          )}
 
           <Button size="small" sx={{ mb: 1 }} onClick={() => setMostrarContorno((v) => !v)}>
             {mostrarContorno ? 'Ocultar contorno opcional' : 'Opcional: dibujar contorno del piso'}
@@ -302,30 +388,59 @@ export default function MapaEditorPage() {
             <MapGridEditor
               mode={modoEditor}
               herramienta={herramienta}
+              herramientaPlazas={herramientaPlazas}
               celdasForma={celdasForma}
               plazas={plazas}
               piso={pisoActual}
               pisoGuardado={pisoGuardado}
-              selectedId={selected?.id}
+              selectedIds={selectedIds}
               onFormaPaint={pintarContorno}
               onCellsSelect={crearPlazasEnCeldas}
               onPlazaMove={moverPlaza}
-              onSelectPlaza={setSelected}
+              onSelectPlaza={handleSelectPlaza}
+              onSelectPlazas={handleSelectPlazas}
+              onDeletePlazas={eliminarPlazas}
             />
           </Paper>
 
-          {!mostrarContorno && selected && (
-            <Paper sx={{ p: 2, mt: 2, maxWidth: 400 }}>
-              <Typography variant="subtitle1">{selected.codigo}</Typography>
-              <Typography variant="body2">
-                Celda ({selected.posX}, {selected.posY}) — Piso {selected.piso}
+          {!mostrarContorno && selectedPlazas.length > 0 && (
+            <Paper sx={{ p: 2, mt: 2, maxWidth: 520 }}>
+              <Typography variant="subtitle1">
+                {selectedPlazas.length === 1
+                  ? selectedPlazas[0].codigo
+                  : `${selectedPlazas.length} lugares seleccionados`}
               </Typography>
-              <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                <Button size="small" onClick={() => toggleActiva(selected)}>
-                  {selected.activa ? 'Desactivar' : 'Activar'}
+              {selectedPlazas.length === 1 && (
+                <Typography variant="body2">
+                  Celda ({selectedPlazas[0].posX}, {selectedPlazas[0].posY}) — Piso{' '}
+                  {selectedPlazas[0].piso}
+                </Typography>
+              )}
+              {selectedPlazas.length > 1 && (
+                <Typography variant="body2" color="text.secondary">
+                  {selectedPlazas
+                    .slice(0, 8)
+                    .map((p) => p.codigo)
+                    .join(', ')}
+                  {selectedPlazas.length > 8 ? '…' : ''}
+                </Typography>
+              )}
+              <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button size="small" onClick={() => toggleActivas(selectedPlazas, false)}>
+                  Desactivar
                 </Button>
-                <Button size="small" color="error" onClick={() => eliminarPlaza(selected.id)}>
+                <Button size="small" onClick={() => toggleActivas(selectedPlazas, true)}>
+                  Activar
+                </Button>
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={() => eliminarPlazas(selectedPlazas)}
+                >
                   Eliminar
+                </Button>
+                <Button size="small" onClick={() => setSelectedIds([])}>
+                  Limpiar selección
                 </Button>
               </Box>
             </Paper>

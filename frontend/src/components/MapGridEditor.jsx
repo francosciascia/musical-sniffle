@@ -18,8 +18,15 @@ import {
   cellKey,
 } from '../utils/plazaLayout'
 import { celdaPermitePlaza } from '../utils/plantaForma'
+import { colors } from '../theme/colors'
 
-function SelectionRect({ start, end, mode }) {
+export const HERRAMIENTA_PLAZAS = {
+  CREAR: 'CREAR',
+  SELECCIONAR: 'SELECCIONAR',
+  BORRAR: 'BORRAR',
+}
+
+function SelectionRect({ start, end, mode, herramientaPlazas }) {
   if (!start || !end) return null
 
   const colMin = Math.min(start.col, end.col)
@@ -27,14 +34,27 @@ function SelectionRect({ start, end, mode }) {
   const rowMin = Math.min(start.row, end.row)
   const rowMax = Math.max(start.row, end.row)
 
+  let fill = 'rgba(11, 93, 42, 0.25)'
+  let stroke = colors.primary
+  if (mode === 'forma') {
+    fill = 'rgba(107, 107, 107, 0.35)'
+    stroke = colors.formaObstaculo
+  } else if (herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR) {
+    fill = 'rgba(198, 40, 40, 0.28)'
+    stroke = colors.ocupada
+  } else if (herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR) {
+    fill = 'rgba(245, 196, 0, 0.28)'
+    stroke = colors.accentDark
+  }
+
   return (
     <Rect
       x={GRID_PAD + colMin * GRID_CELL}
       y={GRID_PAD + rowMin * GRID_CELL}
       width={(colMax - colMin + 1) * GRID_CELL}
       height={(rowMax - rowMin + 1) * GRID_CELL}
-      fill={mode === 'forma' ? 'rgba(96, 125, 139, 0.35)' : 'rgba(21, 101, 192, 0.25)'}
-      stroke={mode === 'forma' ? '#546e7a' : '#1565c0'}
+      fill={fill}
+      stroke={stroke}
       strokeWidth={2}
       dash={[6, 4]}
       listening={false}
@@ -42,7 +62,14 @@ function SelectionRect({ start, end, mode }) {
   )
 }
 
-function DraggablePlaza({ plaza, celdasForma, onDragEnd, onSelect, selected }) {
+function DraggablePlaza({
+  plaza,
+  celdasForma,
+  onDragEnd,
+  onSelect,
+  selected,
+  draggable,
+}) {
   const x = GRID_PAD + (plaza.posX ?? 0) * GRID_CELL
   const y = GRID_PAD + (plaza.posY ?? 0) * GRID_CELL
 
@@ -54,20 +81,21 @@ function DraggablePlaza({ plaza, celdasForma, onDragEnd, onSelect, selected }) {
         width={PLAZA_SIZE - PLAZA_INSET}
         height={PLAZA_SIZE - PLAZA_INSET}
         cornerRadius={6}
-        fill={plaza.activa ? '#1565c0' : '#bdbdbd'}
-        stroke={selected ? '#ffeb3b' : '#0d47a1'}
+        fill={plaza.activa ? colors.primary : colors.fueraServicio}
+        stroke={selected ? colors.accent : colors.primaryDark}
         strokeWidth={selected ? 3 : 2}
-        draggable
+        draggable={draggable}
         onMouseDown={(e) => {
           e.cancelBubble = true
         }}
         onClick={(e) => {
           e.cancelBubble = true
-          onSelect(plaza)
+          const multi = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey
+          onSelect(plaza, { multi })
         }}
         onTap={(e) => {
           e.cancelBubble = true
-          onSelect(plaza)
+          onSelect(plaza, { multi: false })
         }}
         onDragEnd={(e) => {
           const node = e.target
@@ -87,7 +115,7 @@ function DraggablePlaza({ plaza, celdasForma, onDragEnd, onSelect, selected }) {
         text={plaza.codigo}
         align="center"
         fontSize={PLAZA_FONT + 1}
-        fill="#fff"
+        fill={colors.mapText}
         fontStyle="bold"
         listening={false}
       />
@@ -98,14 +126,17 @@ function DraggablePlaza({ plaza, celdasForma, onDragEnd, onSelect, selected }) {
 export default function MapGridEditor({
   mode,
   herramienta,
+  herramientaPlazas = HERRAMIENTA_PLAZAS.CREAR,
   celdasForma,
   plazas,
   piso,
   onFormaPaint,
   onCellsSelect,
   onPlazaMove,
-  selectedId,
+  selectedIds = [],
   onSelectPlaza,
+  onSelectPlazas,
+  onDeletePlazas,
   pisoGuardado = true,
 }) {
   const selectingRef = useRef(false)
@@ -116,11 +147,21 @@ export default function MapGridEditor({
   const { width, height } = editorStageSize()
 
   const plazasPiso = plazas.filter((p) => p.piso === piso)
+  const selectedSet = new Set(selectedIds)
 
-  const ocupadasEnPiso = useRef(new Set())
-  ocupadasEnPiso.current = new Set(
-    plazasPiso.map((p) => cellKey(p.posX ?? 0, p.posY ?? 0)),
+  const plazasByCell = useRef(new Map())
+  plazasByCell.current = new Map(
+    plazasPiso.map((p) => [cellKey(p.posX ?? 0, p.posY ?? 0), p]),
   )
+
+  function plazasEnCeldas(cells) {
+    const found = []
+    for (const c of cells) {
+      const plaza = plazasByCell.current.get(cellKey(c.col, c.row))
+      if (plaza) found.push(plaza)
+    }
+    return found
+  }
 
   function finishSelection(endCell) {
     if (!selectingRef.current || !selStartRef.current) return
@@ -138,10 +179,23 @@ export default function MapGridEditor({
       return
     }
 
+    const existentes = plazasEnCeldas(allCells)
+
+    if (herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR) {
+      if (existentes.length > 0) onDeletePlazas?.(existentes)
+      return
+    }
+
+    if (herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR) {
+      onSelectPlazas?.(existentes)
+      return
+    }
+
+    // CREAR: solo celdas vacías permitidas
     const libres = allCells.filter(
       (c) =>
         pisoGuardado &&
-        !ocupadasEnPiso.current.has(cellKey(c.col, c.row)) &&
+        !plazasByCell.current.has(cellKey(c.col, c.row)) &&
         celdaPermitePlaza(celdasForma, c.col, c.row, pisoGuardado),
     )
 
@@ -190,10 +244,24 @@ export default function MapGridEditor({
     finishSelection(selEndRef.current ?? selStartRef.current)
   }
 
+  function handlePlazaClick(plaza, { multi }) {
+    if (herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR) {
+      onDeletePlazas?.([plaza])
+      return
+    }
+    onSelectPlaza?.(plaza, { multi: multi || herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR })
+  }
+
   const titulo =
     mode === 'forma'
       ? `PISO ${piso} — dibujar forma`
-      : `PISO ${piso} — colocar plazas`
+      : herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR
+        ? `PISO ${piso} — borrar plazas`
+        : herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR
+          ? `PISO ${piso} — seleccionar`
+          : `PISO ${piso} — colocar plazas`
+
+  const allowDrag = herramientaPlazas === HERRAMIENTA_PLAZAS.CREAR
 
   return (
     <Stage
@@ -205,7 +273,7 @@ export default function MapGridEditor({
       onTouchEnd={handleSelectEnd}
     >
       <Layer>
-        <Rect x={0} y={0} width={width} height={height} fill="#fafafa" listening={false} />
+        <Rect x={0} y={0} width={width} height={height} fill={colors.mapCanvas} listening={false} />
         <FormaCells celdas={celdasForma} />
         <GridLines />
         <Text
@@ -214,7 +282,7 @@ export default function MapGridEditor({
           text={titulo}
           fontSize={13}
           fontStyle="bold"
-          fill="#1565c0"
+          fill={colors.primary}
           listening={false}
         />
         <Rect
@@ -226,15 +294,21 @@ export default function MapGridEditor({
           onMouseDown={handleSelectStart}
           onTouchStart={handleSelectStart}
         />
-        <SelectionRect start={selStart} end={selEnd} mode={mode} />
+        <SelectionRect
+          start={selStart}
+          end={selEnd}
+          mode={mode}
+          herramientaPlazas={herramientaPlazas}
+        />
         {mode === 'plazas' &&
           plazasPiso.map((plaza) => (
             <DraggablePlaza
               key={plaza.id}
               plaza={plaza}
               celdasForma={celdasForma}
-              selected={plaza.id === selectedId}
-              onSelect={onSelectPlaza}
+              selected={selectedSet.has(plaza.id)}
+              draggable={allowDrag}
+              onSelect={handlePlazaClick}
               onDragEnd={onPlazaMove}
             />
           ))}
