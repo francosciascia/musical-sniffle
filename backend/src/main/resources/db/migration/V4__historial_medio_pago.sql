@@ -1,0 +1,2 @@
+ALTER TABLE historial
+    ADD COLUMN IF NOT EXISTS medio_pago VARCHAR(30);

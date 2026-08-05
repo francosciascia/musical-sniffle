@@ -20,6 +20,7 @@ import {
 import { colors, LEYENDA_PLAZAS } from '../theme/colors'
 import api from '../api/client'
 import TicketPreviewDialog from './TicketPreviewDialog'
+import EgresoDialog from './EgresoDialog'
 
 function EstadoRow({ color, label, count }) {
   return (
@@ -55,16 +56,14 @@ export default function OpsSidePanel({
   const [patente, setPatente] = useState('')
   const [tipoBusqueda, setTipoBusqueda] = useState('patente')
   const [buscando, setBuscando] = useState(false)
-  const [egresando, setEgresando] = useState(false)
   const [resultado, setResultado] = useState(null)
-  const [cobro, setCobro] = useState(null)
+  const [egresoTarget, setEgresoTarget] = useState(null)
   const [error, setError] = useState('')
   const [ticketPreview, setTicketPreview] = useState(null)
 
   async function buscar() {
     setError('')
     setResultado(null)
-    setCobro(null)
     if (!patente.trim()) {
       setError('Ingresá una patente o ticket')
       return
@@ -81,21 +80,6 @@ export default function OpsSidePanel({
       setError(err.response?.data?.error || 'No se encontró estadía activa')
     } finally {
       setBuscando(false)
-    }
-  }
-
-  async function egresar(id) {
-    setEgresando(true)
-    setError('')
-    try {
-      const { data } = await api.post(`/estadias/${id}/cerrar`)
-      setCobro(data)
-      setResultado(null)
-      onEgresoOk?.()
-    } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo registrar la salida')
-    } finally {
-      setEgresando(false)
     }
   }
 
@@ -130,30 +114,26 @@ export default function OpsSidePanel({
             Actualizar
           </Button>
         </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+          Edificio · {statsEdificio.libres} libres / {statsEdificio.ocupadas} ocup.
+        </Typography>
       </Box>
 
       <Box sx={{ px: 1.75, py: 1.5 }}>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75 }}>
-          Disponibilidad
+          Este piso
         </Typography>
         <EstadoRow color={colors.libre} label="Libres" count={stats.libres} />
-        <EstadoRow color={colors.ocupada} label="Ocupadas" count={stats.ocupadas} />
         <EstadoRow color={colors.reservada} label="Reservadas" count={stats.reservadas} />
-        <EstadoRow
-          color={colors.fueraServicio}
-          label="Fuera de servicio"
-          count={stats.inactivas}
-        />
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-          Edificio: {statsEdificio.libres} libres · {statsEdificio.ocupadas} ocupadas
-        </Typography>
+        <EstadoRow color={colors.ocupada} label="Ocupadas" count={stats.ocupadas} />
+        <EstadoRow color={colors.fueraServicio} label="Inactivas" count={stats.inactivas} />
       </Box>
 
       <Divider />
 
       <Box sx={{ px: 1.75, py: 1.5 }}>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-          Búsqueda
+          Buscar egreso
         </Typography>
         <Stack spacing={1}>
           <TextField
@@ -173,6 +153,7 @@ export default function OpsSidePanel({
             onKeyDown={(e) => e.key === 'Enter' && buscar()}
             fullWidth
             inputProps={{ className: 'mono' }}
+            placeholder={tipoBusqueda === 'patente' ? 'ABC123' : 'TK-…'}
           />
           <Button
             variant="contained"
@@ -226,40 +207,10 @@ export default function OpsSidePanel({
               variant="contained"
               color="secondary"
               sx={{ mt: 1 }}
-              disabled={egresando}
               startIcon={<ArrowUpFromLine size={16} />}
-              onClick={() => egresar(resultado.id)}
+              onClick={() => setEgresoTarget(resultado)}
             >
-              {egresando ? 'Procesando…' : 'Registrar egreso'}
-            </Button>
-          </Box>
-        )}
-
-        {cobro && (
-          <Box
-            sx={{
-              mt: 1.5,
-              p: 1.25,
-              border: `1px solid ${colors.primary}`,
-              borderRadius: '6px',
-              bgcolor: colors.surface,
-            }}
-          >
-            <Typography variant="subtitle2" color="primary" sx={{ mb: 0.5 }}>
-              Egreso registrado
-            </Typography>
-            <Typography className="mono" sx={{ fontWeight: 700 }}>
-              {cobro.patente}
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              Monto: ${cobro.monto}
-              {cobro.abonado ? ' (abonado)' : ''}
-            </Typography>
-            <Typography variant="caption" className="mono" color="text.secondary">
-              Ticket {cobro.ticketCodigo}
-            </Typography>
-            <Button size="small" sx={{ mt: 1 }} onClick={() => setCobro(null)}>
-              Cerrar
+              Registrar egreso
             </Button>
           </Box>
         )}
@@ -326,6 +277,7 @@ export default function OpsSidePanel({
                   params: { patente: selectedPlaza.patente },
                 })
                 setResultado(data)
+                setEgresoTarget(data)
               } catch (err) {
                 setError(err.response?.data?.error || 'No se encontró estadía activa')
               } finally {
@@ -333,7 +285,7 @@ export default function OpsSidePanel({
               }
             }}
           >
-            Buscar egreso de esta plaza
+            Egreso de esta plaza
           </Button>
         )}
 
@@ -360,6 +312,16 @@ export default function OpsSidePanel({
         open={!!ticketPreview}
         ticket={ticketPreview}
         onClose={() => setTicketPreview(null)}
+      />
+
+      <EgresoDialog
+        open={!!egresoTarget}
+        estadia={egresoTarget}
+        onClose={() => setEgresoTarget(null)}
+        onSuccess={() => {
+          setResultado(null)
+          onEgresoOk?.()
+        }}
       />
     </Box>
   )

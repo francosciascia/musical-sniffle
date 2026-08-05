@@ -2,6 +2,7 @@ package com.musicalsniffle.controller;
 
 import com.musicalsniffle.dto.AutoRequest;
 import com.musicalsniffle.dto.CalculoResponse;
+import com.musicalsniffle.dto.CerrarEstadiaRequest;
 import com.musicalsniffle.dto.EstadiaResponse;
 import com.musicalsniffle.dto.TicketResponse;
 import com.musicalsniffle.model.Auto;
@@ -46,8 +47,9 @@ public class EstacionamientoController {
     @PostMapping("/estadias/{id}/cerrar")
     public CalculoResponse cerrarEstadia(
             @PathVariable Long id,
+            @RequestBody(required = false) CerrarEstadiaRequest request,
             @AuthenticationPrincipal UserPrincipal user) {
-        return estacionamientoService.cerrarEstadia(id, user.getPersona());
+        return estacionamientoService.cerrarEstadia(id, user.getPersona(), request);
     }
 
     @PostMapping("/estadias")

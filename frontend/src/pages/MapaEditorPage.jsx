@@ -155,7 +155,7 @@ export default function MapaEditorPage() {
     setOk('')
     setSelectedIds([])
 
-    const codigos = nextPlazaCodigos(plazas, celdas.length)
+    const codigos = nextPlazaCodigos(plazas, celdas.length, pisoActual)
 
     try {
       for (let i = 0; i < celdas.length; i++) {

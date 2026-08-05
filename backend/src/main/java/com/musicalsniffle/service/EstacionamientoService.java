@@ -3,6 +3,7 @@ package com.musicalsniffle.service;
 import com.musicalsniffle.config.EstacionamientoProperties;
 import com.musicalsniffle.dto.AutoRequest;
 import com.musicalsniffle.dto.CalculoResponse;
+import com.musicalsniffle.dto.CerrarEstadiaRequest;
 import com.musicalsniffle.dto.EstadiaResponse;
 import com.musicalsniffle.dto.PlazaEstadoResponse;
 import com.musicalsniffle.dto.TicketResponse;
@@ -10,6 +11,7 @@ import com.musicalsniffle.model.Auto;
 import com.musicalsniffle.model.Cliente;
 import com.musicalsniffle.model.Estadia;
 import com.musicalsniffle.model.EstadoEstadia;
+import com.musicalsniffle.model.MedioPago;
 import com.musicalsniffle.model.Persona;
 import com.musicalsniffle.model.Plaza;
 import com.musicalsniffle.model.Reserva;
@@ -199,7 +201,7 @@ public class EstacionamientoService {
     }
 
     @Transactional
-    public CalculoResponse cerrarEstadia(Long id, Persona operador) {
+    public CalculoResponse cerrarEstadia(Long id, Persona operador, CerrarEstadiaRequest request) {
         Estadia estadia = estadiaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Estadia no encontrada: " + id));
 
@@ -223,23 +225,39 @@ public class EstacionamientoService {
         estadia.setMonto(monto);
         estadiaRepository.save(estadia);
 
+        MedioPago medioPago;
+        if (estadia.isAbonado() || monto.compareTo(BigDecimal.ZERO) == 0) {
+            medioPago = MedioPago.ABONADO;
+        } else {
+            if (request == null || request.getMedioPago() == null) {
+                throw new IllegalArgumentException("Indicá el medio de pago");
+            }
+            if (request.getMedioPago() == MedioPago.ABONADO) {
+                throw new IllegalArgumentException("Medio de pago inválido para un cobro");
+            }
+            medioPago = request.getMedioPago();
+        }
+
         historialService.registrar(
                 TipoEvento.SALIDA,
                 "Salida de " + estadia.getAuto().getPatente()
-                        + (estadia.isAbonado() ? " (abonado)" : ""),
+                        + (estadia.isAbonado() ? " (abonado)" : "")
+                        + " · " + medioPago.name(),
                 operador,
                 "Estadia",
                 estadia.getId(),
-                null);
+                null,
+                medioPago);
 
         if (monto.compareTo(BigDecimal.ZERO) > 0) {
             historialService.registrar(
                     TipoEvento.PAGO,
-                    "Pago de $" + monto + " por estadía #" + estadia.getId(),
+                    "Pago de $" + monto + " (" + medioPago.name() + ") por estadía #" + estadia.getId(),
                     operador,
                     "Estadia",
                     estadia.getId(),
-                    monto);
+                    monto,
+                    medioPago);
         }
 
         String ticketCodigo = ticketService.buscarPorEstadiaId(estadia.getId()).getCodigo();
@@ -251,6 +269,10 @@ public class EstacionamientoService {
                 .monto(monto)
                 .abonado(estadia.isAbonado())
                 .ticketCodigo(ticketCodigo)
+                .plazaCodigo(estadia.getPlaza() != null ? estadia.getPlaza().getCodigo() : null)
+                .entrada(estadia.getEntrada())
+                .salida(estadia.getSalida())
+                .medioPago(medioPago)
                 .build();
     }
 

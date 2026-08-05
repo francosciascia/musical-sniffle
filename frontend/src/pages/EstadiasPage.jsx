@@ -3,10 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Stack,
   Table,
@@ -19,6 +15,7 @@ import {
 } from '@mui/material'
 import { ArrowUpFromLine, Search } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
+import EgresoDialog from '../components/EgresoDialog'
 import api from '../api/client'
 import { colors } from '../theme/colors'
 
@@ -29,8 +26,7 @@ export default function EstadiasPage() {
   const [busqueda, setBusqueda] = useState('')
   const [tipoBusqueda, setTipoBusqueda] = useState('patente')
   const [resultado, setResultado] = useState(null)
-  const [cobro, setCobro] = useState(null)
-  const [cerrando, setCerrando] = useState(false)
+  const [egresoTarget, setEgresoTarget] = useState(null)
 
   const cargar = useCallback(async () => {
     setError('')
@@ -51,7 +47,14 @@ export default function EstadiasPage() {
   async function buscar() {
     setError('')
     setResultado(null)
-    const param = tipoBusqueda === 'patente' ? { patente: busqueda } : { ticket: busqueda }
+    if (!busqueda.trim()) {
+      setError('Ingresá patente o ticket')
+      return
+    }
+    const param =
+      tipoBusqueda === 'patente'
+        ? { patente: busqueda.trim().toUpperCase() }
+        : { ticket: busqueda.trim() }
     try {
       const { data } = await api.get('/operador/estadias/buscar', { params: param })
       setResultado(data)
@@ -60,24 +63,9 @@ export default function EstadiasPage() {
     }
   }
 
-  async function cerrarEstadia(id) {
-    setCerrando(true)
-    setError('')
-    try {
-      const { data } = await api.post(`/estadias/${id}/cerrar`)
-      setCobro(data)
-      setResultado(null)
-      cargar()
-    } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo cerrar la estadía')
-    } finally {
-      setCerrando(false)
-    }
-  }
-
   return (
     <AppLayout>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
         Estadías activas
       </Typography>
 
@@ -97,7 +85,7 @@ export default function EstadiasPage() {
         }}
       >
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-          Buscar para egreso
+          Buscar por patente o ticket
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
           <TextField
@@ -114,6 +102,7 @@ export default function EstadiasPage() {
             label={tipoBusqueda === 'patente' ? 'Patente' : 'Código ticket'}
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Enter' && buscar()}
             inputProps={{ className: 'mono' }}
           />
           <Button variant="contained" onClick={buscar} startIcon={<Search size={16} />}>
@@ -145,18 +134,17 @@ export default function EstadiasPage() {
               variant="contained"
               color="secondary"
               sx={{ mt: 1 }}
-              disabled={cerrando}
               startIcon={<ArrowUpFromLine size={16} />}
-              onClick={() => cerrarEstadia(resultado.id)}
+              onClick={() => setEgresoTarget(resultado)}
             >
-              {cerrando ? 'Procesando…' : 'Registrar egreso'}
+              Registrar egreso
             </Button>
           </Box>
         )}
       </Box>
 
-      <Box sx={{ border: `1px solid ${colors.border}`, borderRadius: '6px', overflow: 'hidden' }}>
-        <Table size="small">
+      <Box sx={{ border: `1px solid ${colors.border}`, borderRadius: '6px', overflow: 'auto' }}>
+        <Table size="small" sx={{ minWidth: 480 }}>
           <TableHead>
             <TableRow>
               <TableCell>Patente</TableCell>
@@ -196,9 +184,8 @@ export default function EstadiasPage() {
                     size="small"
                     color="secondary"
                     variant="contained"
-                    disabled={cerrando}
                     startIcon={<ArrowUpFromLine size={14} />}
-                    onClick={() => cerrarEstadia(e.id)}
+                    onClick={() => setEgresoTarget(e)}
                   >
                     Egreso
                   </Button>
@@ -209,25 +196,15 @@ export default function EstadiasPage() {
         </Table>
       </Box>
 
-      <Dialog open={!!cobro} onClose={() => setCobro(null)}>
-        <DialogTitle>Egreso registrado</DialogTitle>
-        <DialogContent>
-          <Typography className="mono" sx={{ fontWeight: 700 }}>
-            {cobro?.patente}
-          </Typography>
-          <Typography variant="body2">Tipo: {cobro?.tipoVehiculo}</Typography>
-          <Typography sx={{ mt: 1, fontWeight: 700 }}>
-            Monto: ${cobro?.monto}
-            {cobro?.abonado ? ' (abonado)' : ''}
-          </Typography>
-          <Typography variant="caption" className="mono" color="text.secondary">
-            Ticket {cobro?.ticketCodigo}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCobro(null)}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
+      <EgresoDialog
+        open={!!egresoTarget}
+        estadia={egresoTarget}
+        onClose={() => setEgresoTarget(null)}
+        onSuccess={() => {
+          setResultado(null)
+          cargar()
+        }}
+      />
     </AppLayout>
   )
 }

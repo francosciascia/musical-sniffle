@@ -53,4 +53,8 @@ public class Historial {
 
     @Column(precision = 10, scale = 2)
     private BigDecimal monto;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "medio_pago", length = 30)
+    private MedioPago medioPago;
 }

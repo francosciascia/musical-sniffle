@@ -1,5 +1,7 @@
 package com.musicalsniffle.controller;
 
+import com.musicalsniffle.dto.ActivoRequest;
+import com.musicalsniffle.dto.ClienteAdminRequest;
 import com.musicalsniffle.dto.OperadorRequest;
 import com.musicalsniffle.dto.PersonaRequest;
 import com.musicalsniffle.dto.PersonaResponse;
@@ -10,6 +12,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,8 +37,8 @@ public class UsuarioAdminController {
 
     @PostMapping("/clientes")
     @ResponseStatus(HttpStatus.CREATED)
-    public PersonaResponse registrarCliente(@Valid @RequestBody PersonaRequest request) {
-        return personaService.registrarCliente(request);
+    public PersonaResponse registrarCliente(@Valid @RequestBody ClienteAdminRequest request) {
+        return personaService.registrarClienteAdmin(request);
     }
 
     @PostMapping("/operadores")
@@ -47,5 +51,10 @@ public class UsuarioAdminController {
     @ResponseStatus(HttpStatus.CREATED)
     public PersonaResponse registrarSuperAdmin(@Valid @RequestBody PersonaRequest request) {
         return personaService.registrarSuperAdmin(request);
+    }
+
+    @PatchMapping("/{id}/activo")
+    public PersonaResponse setActivo(@PathVariable Long id, @RequestBody ActivoRequest request) {
+        return personaService.setActivo(id, request.isActivo());
     }
 }

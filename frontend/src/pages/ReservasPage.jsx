@@ -10,6 +10,7 @@ import {
   DialogTitle,
   MenuItem,
   Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -19,7 +20,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { MapPin } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
+import PlazaMapPickerDialog from '../components/PlazaMapPickerDialog'
 import api from '../api/client'
 
 const ESTADOS = ['ACTIVA', 'SUSPENDIDA', 'VENCIDA', 'CANCELADA']
@@ -37,6 +40,7 @@ export default function ReservasPage() {
   const [autos, setAutos] = useState([])
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     clienteId: '',
@@ -73,6 +77,8 @@ export default function ReservasPage() {
     ? autos.filter((a) => a.cliente?.id === Number(form.clienteId))
     : []
 
+  const plazaSeleccionada = plazas.find((p) => String(p.id) === String(form.plazaId))
+
   async function crearReserva() {
     setLoading(true)
     setError('')
@@ -87,6 +93,15 @@ export default function ReservasPage() {
         estado: form.estado,
       })
       setDialogOpen(false)
+      setForm({
+        clienteId: '',
+        plazaId: '',
+        autoIds: [],
+        fechaInicio: new Date().toISOString().slice(0, 10),
+        fechaFin: '',
+        montoMensual: '',
+        estado: 'ACTIVA',
+      })
       cargar()
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo crear la reserva')
@@ -139,7 +154,11 @@ export default function ReservasPage() {
         </Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
 
       <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
         <Table size="small" sx={{ minWidth: 720 }}>
@@ -194,9 +213,7 @@ export default function ReservasPage() {
             value={form.clienteId}
             onChange={(e) => setForm({ ...form, clienteId: e.target.value, autoIds: [] })}
             helperText={
-              clientes.length === 0
-                ? 'No hay clientes — crealos en el menú Clientes'
-                : undefined
+              clientes.length === 0 ? 'No hay clientes — crealos en el menú Clientes' : undefined
             }
           >
             {clientes.map((c) => (
@@ -206,18 +223,31 @@ export default function ReservasPage() {
             ))}
           </TextField>
 
-          <TextField
-            select
-            label="Plaza"
-            value={form.plazaId}
-            onChange={(e) => setForm({ ...form, plazaId: e.target.value })}
-          >
-            {plazas.map((p) => (
-              <MenuItem key={p.id} value={p.id}>
-                {p.codigo}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'flex-start' }}>
+            <TextField
+              select
+              label="Plaza"
+              value={form.plazaId}
+              onChange={(e) => setForm({ ...form, plazaId: e.target.value })}
+              fullWidth
+              helperText={plazaSeleccionada ? `Código ${plazaSeleccionada.codigo}` : 'Lista o mapa'}
+            >
+              {plazas.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.codigo}
+                  {p.piso != null ? ` · Piso ${p.piso}` : ''}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button
+              variant="outlined"
+              startIcon={<MapPin size={16} />}
+              onClick={() => setMapOpen(true)}
+              sx={{ flexShrink: 0, mt: { sm: 0.5 }, whiteSpace: 'nowrap' }}
+            >
+              Elegir en mapa
+            </Button>
+          </Stack>
 
           <TextField
             select
@@ -283,6 +313,19 @@ export default function ReservasPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <PlazaMapPickerDialog
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+        selectedId={form.plazaId ? Number(form.plazaId) : null}
+        title="Elegir plaza para la reserva"
+        hint="Tocá una plaza libre (sin reserva activa). Después confirmá con Usar esta plaza."
+        filterPlaza={(p) => p.activa && !p.reservada}
+        onPick={(p) => {
+          setForm((f) => ({ ...f, plazaId: p.id }))
+          setPlazas((prev) => (prev.some((x) => x.id === p.id) ? prev : [...prev, p]))
+        }}
+      />
     </AppLayout>
   )
 }

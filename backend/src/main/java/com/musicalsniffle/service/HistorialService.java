@@ -1,6 +1,7 @@
 package com.musicalsniffle.service;
 
 import com.musicalsniffle.model.Historial;
+import com.musicalsniffle.model.MedioPago;
 import com.musicalsniffle.model.Persona;
 import com.musicalsniffle.model.TipoEvento;
 import com.musicalsniffle.repository.HistorialRepository;
@@ -25,6 +26,18 @@ public class HistorialService {
             String entidadTipo,
             Long entidadId,
             BigDecimal monto) {
+        return registrar(tipoEvento, descripcion, persona, entidadTipo, entidadId, monto, null);
+    }
+
+    @Transactional
+    public Historial registrar(
+            TipoEvento tipoEvento,
+            String descripcion,
+            Persona persona,
+            String entidadTipo,
+            Long entidadId,
+            BigDecimal monto,
+            MedioPago medioPago) {
 
         Historial historial = Historial.builder()
                 .tipoEvento(tipoEvento)
@@ -34,6 +47,7 @@ public class HistorialService {
                 .entidadTipo(entidadTipo)
                 .entidadId(entidadId)
                 .monto(monto)
+                .medioPago(medioPago)
                 .build();
 
         return historialRepository.save(historial);

@@ -1,6 +1,7 @@
 package com.musicalsniffle.dto;
 
 import com.musicalsniffle.model.Historial;
+import com.musicalsniffle.model.MedioPago;
 import com.musicalsniffle.model.TipoEvento;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ public class HistorialResponse {
     private String entidadTipo;
     private Long entidadId;
     private BigDecimal monto;
+    private MedioPago medioPago;
 
     public static HistorialResponse from(Historial historial) {
         return HistorialResponse.builder()
@@ -32,6 +34,7 @@ public class HistorialResponse {
                 .entidadTipo(historial.getEntidadTipo())
                 .entidadId(historial.getEntidadId())
                 .monto(historial.getMonto())
+                .medioPago(historial.getMedioPago())
                 .build();
     }
 }

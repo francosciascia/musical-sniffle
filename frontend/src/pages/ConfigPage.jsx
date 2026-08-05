@@ -1,21 +1,16 @@
 import { useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  Stack,
-  Tab,
-  Tabs,
-  Typography,
-} from '@mui/material'
+import { Box, Button, Stack, Tab, Tabs, Typography } from '@mui/material'
 import { LayoutGrid, Receipt } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import TarifasPanel from '../components/TarifasPanel'
+import OperadoresPanel from '../components/OperadoresPanel'
 import { colors } from '../theme/colors'
 
 const TABS = [
   { id: 'diseno', label: 'Diseño' },
   { id: 'tarifas', label: 'Tarifas' },
+  { id: 'operadores', label: 'Operadores' },
 ]
 
 export default function ConfigPage() {
@@ -36,7 +31,7 @@ export default function ConfigPage() {
         Configuración
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Diseño del estacionamiento y parámetros operativos.
+        Diseño, tarifas y operadores.
       </Typography>
 
       <Tabs
@@ -96,6 +91,8 @@ export default function ConfigPage() {
           <TarifasPanel />
         </Box>
       )}
+
+      {tab === 'operadores' && <OperadoresPanel />}
     </AppLayout>
   )
 }

@@ -76,17 +76,36 @@ export function cellsInRect(a, b) {
   return cells
 }
 
-/** Genera códigos P-01, P-02… continuando desde los existentes. */
-export function nextPlazaCodigos(plazas, count) {
-  const maxNum = plazas.reduce((max, p) => {
-    const match = p.codigo?.match(/(\d+)\s*$/)
+/** Letra del piso: 1→A, 2→B, 3→C… */
+export function letraPiso(piso) {
+  const n = Math.max(1, Number(piso) || 1)
+  if (n <= 26) return String.fromCharCode(64 + n)
+  // Pisos 27+: AA, AB…
+  let num = n
+  let s = ''
+  while (num > 0) {
+    num -= 1
+    s = String.fromCharCode(65 + (num % 26)) + s
+    num = Math.floor(num / 26)
+  }
+  return s
+}
+
+/**
+ * Códigos por piso: piso 1 → A1, A2…; piso 2 → B1, B2…; piso 3 → C1…
+ * Continúa el número según las plazas ya existentes de ese piso.
+ */
+export function nextPlazaCodigos(plazas, count, piso = 1) {
+  const letra = letraPiso(piso)
+  const re = new RegExp(`^${letra}(\\d+)$`, 'i')
+
+  const maxNum = (plazas || []).reduce((max, p) => {
+    if ((p.piso || 1) !== (piso || 1)) return max
+    const match = p.codigo?.match(re)
     return match ? Math.max(max, parseInt(match[1], 10)) : max
   }, 0)
 
-  return Array.from({ length: count }, (_, i) => {
-    const n = maxNum + i + 1
-    return `P-${String(n).padStart(2, '0')}`
-  })
+  return Array.from({ length: count }, (_, i) => `${letra}${maxNum + i + 1}`)
 }
 
 export function cellKey(col, row) {

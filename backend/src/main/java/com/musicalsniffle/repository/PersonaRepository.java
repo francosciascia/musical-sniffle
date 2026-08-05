@@ -11,4 +11,8 @@ public interface PersonaRepository extends JpaRepository<Persona, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByDni(String dni);
+
+    boolean existsByEmailAndIdNot(String email, Long id);
+
+    boolean existsByDniAndIdNot(String dni, Long id);
 }

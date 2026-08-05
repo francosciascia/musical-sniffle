@@ -7,11 +7,13 @@ import {
   DialogContent,
   DialogTitle,
   MenuItem,
+  Stack,
   TextField,
   Typography,
 } from '@mui/material'
-import { ArrowDownToLine } from 'lucide-react'
+import { ArrowDownToLine, MapPin } from 'lucide-react'
 import api from '../api/client'
+import PlazaMapPickerDialog from './PlazaMapPickerDialog'
 
 const TIPOS = ['AUTO', 'CAMIONETA', 'MOTO', 'CAMION']
 
@@ -19,6 +21,8 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
   const [patente, setPatente] = useState('')
   const [modelo, setModelo] = useState('')
   const [tipo, setTipo] = useState('AUTO')
+  const [plazaElegida, setPlazaElegida] = useState(null)
+  const [mapOpen, setMapOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -27,9 +31,11 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
       setPatente('')
       setModelo('')
       setTipo('AUTO')
+      setPlazaElegida(plaza || null)
       setError('')
+      setMapOpen(false)
     }
-  }, [open])
+  }, [open, plaza])
 
   function handleClose() {
     if (loading) return
@@ -70,8 +76,8 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
       }
 
       const params = { autoId }
-      if (plaza?.id) {
-        params.plazaId = plaza.id
+      if (plazaElegida?.id) {
+        params.plazaId = plazaElegida.id
       }
 
       const { data: estadia } = await api.post('/estadias', null, { params })
@@ -90,68 +96,97 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1 }}>
-          {plaza ? `Ingreso · Plaza ${plaza.codigo}` : 'Registrar ingreso'}
-          {plaza?.reservada && (
-            <Typography variant="body2" color="warning.main" sx={{ mt: 0.5, fontWeight: 500 }}>
-              Plaza reservada
-              {plaza.reservaCliente ? ` · ${plaza.reservaCliente}` : ''}
-            </Typography>
-          )}
-          {!plaza && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 400 }}>
-              Solo patente y modelo. La plaza es opcional.
-            </Typography>
-          )}
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+    <>
+      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+        <form onSubmit={handleSubmit}>
+          <DialogTitle sx={{ pb: 1 }}>
+            {plazaElegida ? `Ingreso · Plaza ${plazaElegida.codigo}` : 'Registrar ingreso'}
+            {plazaElegida?.reservada && (
+              <Typography variant="body2" color="warning.main" sx={{ mt: 0.5, fontWeight: 500 }}>
+                Plaza reservada
+                {plazaElegida.reservaCliente ? ` · ${plazaElegida.reservaCliente}` : ''}
+              </Typography>
+            )}
+            {!plazaElegida && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 400 }}>
+                Patente y modelo. La plaza es opcional (podés elegirla en el mapa).
+              </Typography>
+            )}
+          </DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
+            {error && <Alert severity="error">{error}</Alert>}
 
-          <TextField
-            label="Patente"
-            value={patente}
-            onChange={(e) => setPatente(e.target.value.toUpperCase())}
-            required
-            autoFocus
-            inputProps={{ className: 'mono' }}
-          />
-          <TextField
-            label="Modelo"
-            value={modelo}
-            onChange={(e) => setModelo(e.target.value)}
-            placeholder="Ej: Toyota Corolla"
-            required
-            helperText="Obligatorio"
-          />
-          <TextField
-            select
-            label="Tipo"
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value)}
-          >
-            {TIPOS.map((t) => (
-              <MenuItem key={t} value={t}>
-                {t}
-              </MenuItem>
-            ))}
-          </TextField>
-        </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 2 }}>
-          <Button onClick={handleClose} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading}
-            startIcon={<ArrowDownToLine size={16} />}
-          >
-            {loading ? 'Registrando…' : 'Confirmar ingreso'}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <TextField
+                label="Plaza"
+                value={plazaElegida ? plazaElegida.codigo : 'Sin asignar'}
+                fullWidth
+                InputProps={{ readOnly: true, className: 'mono' }}
+              />
+              <Button
+                variant="outlined"
+                startIcon={<MapPin size={16} />}
+                onClick={() => setMapOpen(true)}
+                sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+              >
+                Mapa
+              </Button>
+            </Stack>
+            {plazaElegida && (
+              <Button size="small" onClick={() => setPlazaElegida(null)} sx={{ alignSelf: 'flex-start' }}>
+                Quitar plaza
+              </Button>
+            )}
+
+            <TextField
+              label="Patente"
+              value={patente}
+              onChange={(e) => setPatente(e.target.value.toUpperCase())}
+              required
+              autoFocus
+              inputProps={{ className: 'mono' }}
+            />
+            <TextField
+              label="Modelo"
+              value={modelo}
+              onChange={(e) => setModelo(e.target.value)}
+              placeholder="Ej: Toyota Corolla"
+              required
+              helperText="Obligatorio"
+            />
+            <TextField select label="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              {TIPOS.map((t) => (
+                <MenuItem key={t} value={t}>
+                  {t}
+                </MenuItem>
+              ))}
+            </TextField>
+          </DialogContent>
+          <DialogActions sx={{ px: 2, pb: 2 }}>
+            <Button onClick={handleClose} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading}
+              startIcon={<ArrowDownToLine size={16} />}
+            >
+              {loading ? 'Registrando…' : 'Confirmar ingreso'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      <PlazaMapPickerDialog
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+        selectedId={plazaElegida?.id}
+        title="Elegir plaza para el ingreso"
+        hint="Tocá una plaza libre. Las ocupadas o reservadas no se usan para visitante."
+        filterPlaza={(p) => p.activa && !p.ocupada && !p.reservada}
+        onPick={(p) => setPlazaElegida(p)}
+      />
+    </>
   )
 }
