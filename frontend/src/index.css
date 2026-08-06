@@ -16,6 +16,21 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* Chrome/Edge: vacío muestra dd/mm/aaaa apilado; lo ocultamos hasta focus o valor. */
+.date-field-empty input[type='date']::-webkit-datetime-edit {
+  color: transparent;
+}
+
+.date-field-empty input[type='date']:focus::-webkit-datetime-edit {
+  color: inherit;
+}
+
+input[type='date']::-webkit-datetime-edit,
+input[type='date']::-webkit-datetime-edit-fields-wrapper {
+  display: inline-flex;
+  align-items: center;
+}
+
 /* Ticket térmico ~58 mm */
 @media print {
   @page {

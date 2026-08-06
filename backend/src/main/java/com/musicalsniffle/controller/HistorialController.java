@@ -1,12 +1,9 @@
 package com.musicalsniffle.controller;
 
 import com.musicalsniffle.dto.HistorialResponse;
-import com.musicalsniffle.dto.ReservaResponse;
 import com.musicalsniffle.dto.TotalResponse;
 import com.musicalsniffle.model.TipoEvento;
-import com.musicalsniffle.security.UserPrincipal;
 import com.musicalsniffle.service.HistorialService;
-import com.musicalsniffle.service.ReservaService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -14,9 +11,7 @@ import java.time.LocalTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class HistorialController {
 
     private final HistorialService historialService;
-    private final ReservaService reservaService;
 
     @GetMapping("/api/admin/historial")
     public List<HistorialResponse> listarHistorialAdmin(
@@ -76,10 +70,5 @@ public class HistorialController {
         return historialService.listarPorPeriodo(inicio, fin).stream()
                 .map(HistorialResponse::from)
                 .toList();
-    }
-
-    @GetMapping("/api/cliente/mi-reserva")
-    public ReservaResponse miReserva(@AuthenticationPrincipal UserPrincipal user) {
-        return reservaService.buscarActivaPorCliente(user.getPersona().getId());
     }
 }

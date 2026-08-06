@@ -23,6 +23,6 @@ public class Operador extends Persona {
 
     @Override
     public Rol getRol() {
-        return Rol.OPERADOR;
+        return Rol.USUARIO;
     }
 }

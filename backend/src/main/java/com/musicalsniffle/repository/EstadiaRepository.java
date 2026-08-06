@@ -29,6 +29,9 @@ public interface EstadiaRepository extends JpaRepository<Estadia, Long> {
 
     Optional<Estadia> findByAuto_PatenteIgnoreCaseAndEstado(String patente, EstadoEstadia estado);
 
+    /** Coincidencia parcial: "986" encuentra AA986BB, 986, etc. */
+    List<Estadia> findByAuto_PatenteContainingIgnoreCaseAndEstado(String patente, EstadoEstadia estado);
+
     long countByEstado(EstadoEstadia estado);
 
     @Query("""

@@ -17,27 +17,66 @@ public class ReservaVencimientoService {
 
     private final ReservaRepository reservaRepository;
     private final HistorialService historialService;
+    private final AjustesEstacionamientoService ajustesService;
 
     @Scheduled(cron = "0 0 1 * * *")
     @Transactional
-    public void vencerReservasExpiradas() {
-        marcarVencidas(LocalDate.now());
+    public void procesarAbonosDiario() {
+        suspenderPorAtraso();
+        marcarVencidas(ajustesService.fechaReferenciaAbono());
     }
 
+    /** ACTIVA con fechaFin hace ≥ N días → SUSPENDIDA (sigue existiendo el lugar, pero no es abonado “al día”). */
     @Transactional
-    public int marcarVencidas(LocalDate fecha) {
-        List<Reserva> expiradas = reservaRepository.findByEstadoAndFechaFinBefore(EstadoReserva.ACTIVA, fecha);
-        for (Reserva reserva : expiradas) {
-            reserva.setEstado(EstadoReserva.VENCIDA);
+    public int suspenderPorAtraso() {
+        int dias = ajustesService.getEntity().getDiasAtrasoParaSuspender();
+        if (dias <= 0) {
+            return 0;
+        }
+        LocalDate limite = LocalDate.now().minusDays(dias);
+        List<Reserva> atrasadas =
+                reservaRepository.findActivasConFinAntesDe(EstadoReserva.ACTIVA, limite);
+        for (Reserva reserva : atrasadas) {
+            reserva.setEstado(EstadoReserva.SUSPENDIDA);
             reservaRepository.save(reserva);
             historialService.registrar(
-                    TipoEvento.RESERVA_CANCELADA,
-                    "Reserva #" + reserva.getId() + " vencida automáticamente",
+                    TipoEvento.RESERVA_ACTUALIZADA,
+                    "Abono #" + reserva.getId() + " suspendido por atraso (auto)",
                     null,
                     "Reserva",
                     reserva.getId(),
                     null);
         }
-        return expiradas.size();
+        return atrasadas.size();
+    }
+
+    @Transactional
+    public int marcarVencidas(LocalDate fechaLimite) {
+        List<Reserva> expiradas =
+                reservaRepository.findByEstadoAndFechaFinBefore(EstadoReserva.ACTIVA, fechaLimite);
+        // También suspendidas ya fuera de gracia
+        List<Reserva> suspendidasExpiradas =
+                reservaRepository.findByEstadoAndFechaFinBefore(EstadoReserva.SUSPENDIDA, fechaLimite);
+        int n = 0;
+        for (Reserva reserva : expiradas) {
+            n += marcarVencida(reserva);
+        }
+        for (Reserva reserva : suspendidasExpiradas) {
+            n += marcarVencida(reserva);
+        }
+        return n;
+    }
+
+    private int marcarVencida(Reserva reserva) {
+        reserva.setEstado(EstadoReserva.VENCIDA);
+        reservaRepository.save(reserva);
+        historialService.registrar(
+                TipoEvento.RESERVA_CANCELADA,
+                "Reserva #" + reserva.getId() + " vencida automáticamente",
+                null,
+                "Reserva",
+                reserva.getId(),
+                null);
+        return 1;
     }
 }

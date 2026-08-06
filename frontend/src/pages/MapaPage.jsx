@@ -12,8 +12,8 @@ import { celdasDelPiso, derivePisosDesdePlazasYPlantas, pisosDesdePlantas } from
 function contarPorEstado(lista) {
   return {
     libres: lista.filter((p) => p.activa && !p.ocupada && !p.reservada).length,
-    reservadas: lista.filter((p) => p.reservada && !p.ocupada).length,
-    ocupadas: lista.filter((p) => p.ocupada).length,
+    reservadas: lista.filter((p) => p.activa && p.reservada && !p.ocupada).length,
+    ocupadas: lista.filter((p) => p.activa && p.ocupada).length,
     inactivas: lista.filter((p) => !p.activa).length,
   }
 }
@@ -28,6 +28,7 @@ export default function MapaPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [ticket, setTicket] = useState(null)
   const [ticketOpen, setTicketOpen] = useState(false)
+  const [avisos, setAvisos] = useState([])
 
   const cargarPlazas = useCallback(async () => {
     setError('')
@@ -90,6 +91,7 @@ export default function MapaPage() {
   function handleIngresoOk(estadia) {
     setSelectedPlaza(null)
     cargarPlazas()
+    setAvisos(Array.isArray(estadia?.avisos) ? estadia.avisos : [])
     if (estadia?.ticket) {
       setTicket(estadia.ticket)
       setTicketOpen(true)
@@ -109,6 +111,7 @@ export default function MapaPage() {
           display: 'flex',
           flexDirection: 'column',
           bgcolor: colors.surfaceAlt,
+          overflow: 'hidden',
         }}
       >
         <Box
@@ -120,11 +123,12 @@ export default function MapaPage() {
             bgcolor: colors.surface,
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
-            flexWrap: 'wrap',
+            gap: 1.5,
+            minWidth: 0,
+            overflow: 'hidden',
           }}
         >
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" color="text.secondary" sx={{ flexShrink: 0 }}>
             Plano
           </Typography>
           <Tabs
@@ -133,21 +137,29 @@ export default function MapaPage() {
               setPisoActual(v)
               setSelectedPlaza(null)
             }}
-            variant="scrollable"
-            scrollButtons="auto"
+            variant="standard"
+            sx={{
+              minHeight: 36,
+              minWidth: 0,
+              flex: 1,
+              '& .MuiTabs-flexContainer': { flexWrap: 'wrap', gap: 0.25 },
+              '& .MuiTabs-indicator': { display: 'none' },
+            }}
           >
             {pisos.map((p) => {
               const delPiso = todasPlazas.filter((pl) => (pl.piso || 1) === p)
               const occ = delPiso.filter((pl) => pl.ocupada).length
+              const res = delPiso.filter((pl) => pl.reservada && !pl.ocupada).length
               return (
                 <Tab
                   key={p}
                   label={
                     delPiso.length
-                      ? `Piso ${p} · ${occ}/${delPiso.length}`
+                      ? `Piso ${p} · ${occ + res}/${delPiso.length}`
                       : `Piso ${p}`
                   }
                   value={p}
+                  sx={{ minHeight: 36, minWidth: 0, px: 1.25, py: 0.5 }}
                 />
               )
             })}
@@ -155,8 +167,17 @@ export default function MapaPage() {
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ m: 1.5 }} onClose={() => setError('')}>
+          <Alert severity="error" sx={{ m: 1.5, flexShrink: 0 }} onClose={() => setError('')}>
             {error}
+          </Alert>
+        )}
+        {avisos.length > 0 && (
+          <Alert severity="warning" sx={{ m: 1.5, flexShrink: 0 }} onClose={() => setAvisos([])}>
+            {avisos.map((a) => (
+              <Typography key={a} variant="body2">
+                {a}
+              </Typography>
+            ))}
           </Alert>
         )}
 
@@ -164,11 +185,11 @@ export default function MapaPage() {
           sx={{
             flex: 1,
             minHeight: 0,
-            overflow: 'auto',
-            p: 1.5,
+            minWidth: 0,
+            overflow: 'hidden',
+            p: 1,
             display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
+            flexDirection: 'column',
           }}
         >
           {loading ? (
@@ -181,11 +202,13 @@ export default function MapaPage() {
           ) : (
             <Box
               sx={{
+                flex: 1,
+                minHeight: 0,
+                minWidth: 0,
                 border: `1px solid ${colors.border}`,
                 borderRadius: '6px',
                 bgcolor: colors.surface,
-                p: 1,
-                lineHeight: 0,
+                overflow: 'hidden',
               }}
             >
               <ParkingMap
@@ -196,6 +219,7 @@ export default function MapaPage() {
                 gridRows={plantaActual?.gridRows}
                 selectedId={selectedPlaza?.id}
                 onSelectPlaza={handleSelectPlaza}
+                fit
               />
             </Box>
           )}

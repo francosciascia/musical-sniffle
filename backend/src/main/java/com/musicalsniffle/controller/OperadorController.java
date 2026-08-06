@@ -23,12 +23,18 @@ public class OperadorController {
     }
 
     @GetMapping("/estadias/buscar")
-    public EstadiaResponse buscarEstadiaActiva(
+    public Object buscarEstadiaActiva(
             @RequestParam(required = false) String patente,
             @RequestParam(required = false) String ticket) {
 
         if (patente != null && !patente.isBlank()) {
-            return estacionamientoService.buscarEstadiaActivaPorPatente(patente);
+            List<EstadiaResponse> matches =
+                    estacionamientoService.buscarEstadiasActivasPorPatente(patente);
+            if (matches.isEmpty()) {
+                throw new IllegalArgumentException("No hay estadía activa para patente: " + patente);
+            }
+            // Una sola: objeto (compat). Varias: lista para elegir.
+            return matches.size() == 1 ? matches.get(0) : matches;
         }
         if (ticket != null && !ticket.isBlank()) {
             return estacionamientoService.buscarEstadiaActivaPorTicket(ticket);

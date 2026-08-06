@@ -26,6 +26,7 @@ frontend/node_modules/
 frontend/dist/
 frontend/.env.local
 
-# Env
+# Env / secrets locales
 .env
 .env.*
+backend/src/main/resources/application-local.yml

@@ -51,7 +51,7 @@ public class EstacionamientoService {
 
     @Transactional(readOnly = true)
     public List<Auto> listarAutos() {
-        return autoRepository.findAll();
+        return autoRepository.findAllWithCliente();
     }
 
     @Transactional(readOnly = true)
@@ -73,13 +73,44 @@ public class EstacionamientoService {
 
     @Transactional(readOnly = true)
     public EstadiaResponse buscarEstadiaActivaPorPatente(String patente) {
-        Estadia estadia = estadiaRepository
-                .findByAuto_PatenteIgnoreCaseAndEstado(patente, EstadoEstadia.ABIERTA)
-                .orElseThrow(() -> new IllegalArgumentException("No hay estadía activa para patente: " + patente));
-        TicketResponse ticket = ticketRepository.findByEstadiaId(estadia.getId())
-                .map(TicketResponse::from)
-                .orElse(null);
-        return EstadiaResponse.from(estadia, ticket);
+        List<EstadiaResponse> matches = buscarEstadiasActivasPorPatente(patente);
+        if (matches.isEmpty()) {
+            throw new IllegalArgumentException("No hay estadía activa para patente: " + patente);
+        }
+        return matches.get(0);
+    }
+
+    /**
+     * Busca estadías abiertas por patente. Exacta primero; si no, parcial
+     * (ej. "986" → varias patentes distintas que la contienen).
+     */
+    @Transactional(readOnly = true)
+    public List<EstadiaResponse> buscarEstadiasActivasPorPatente(String patenteRaw) {
+        String q = patenteRaw == null ? "" : patenteRaw.trim().toUpperCase().replaceAll("[^A-Z0-9]", "");
+        if (q.isEmpty()) {
+            throw new IllegalArgumentException("Indicá la patente");
+        }
+
+        // Incluye exactas y parecidas (986 → 986, AA986BB, …). Unicidad al guardar es solo exacta.
+        List<Estadia> candidatas =
+                estadiaRepository.findByAuto_PatenteContainingIgnoreCaseAndEstado(q, EstadoEstadia.ABIERTA);
+
+        return candidatas.stream()
+                .sorted((a, b) -> {
+                    boolean ae = a.getAuto().getPatente().equalsIgnoreCase(q);
+                    boolean be = b.getAuto().getPatente().equalsIgnoreCase(q);
+                    if (ae == be) {
+                        return a.getAuto().getPatente().compareToIgnoreCase(b.getAuto().getPatente());
+                    }
+                    return ae ? -1 : 1;
+                })
+                .map(estadia -> {
+                    TicketResponse ticket = ticketRepository.findByEstadiaId(estadia.getId())
+                            .map(TicketResponse::from)
+                            .orElse(null);
+                    return EstadiaResponse.from(estadia, ticket);
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -182,6 +213,14 @@ public class EstacionamientoService {
                 .orElseThrow(() -> new IllegalArgumentException("Auto no encontrado: " + autoId));
 
         validarAutoSinEstadiaAbierta(auto);
+        Optional<Reserva> suspendida = reservaService.buscarSuspendidaPorAuto(autoId);
+        if (suspendida.isPresent()) {
+            if (ajustesService.isBloquearIngresoSiSuspendida()) {
+                throw new IllegalStateException(
+                        "Abono suspendido (plaza " + suspendida.get().getPlaza().getCodigo()
+                                + "). Registrá el pago mensual o reactivá el abono.");
+            }
+        }
         Optional<Reserva> reservaActiva = reservaService.buscarActivaPorAuto(autoId);
         Plaza plaza = resolverPlaza(plazaId, reservaActiva);
         validarPlazaLibre(plaza, auto);
@@ -214,7 +253,15 @@ public class EstacionamientoService {
                 guardada.getId(),
                 null);
 
-        return EstadiaResponse.from(guardada, TicketResponse.from(ticket));
+        List<String> avisos = construirAvisosIngreso(reservaActiva);
+        if (suspendida.isPresent() && !abonado) {
+            avisos = new ArrayList<>(avisos);
+            avisos.add(
+                    "Abono suspendido (plaza "
+                            + suspendida.get().getPlaza().getCodigo()
+                            + "). Conviene cobrar / reactivar.");
+        }
+        return EstadiaResponse.from(guardada, TicketResponse.from(ticket), avisos);
     }
 
     @Transactional
@@ -369,8 +416,41 @@ public class EstacionamientoService {
             return;
         }
 
+        if (ajustesService.isPermitirVisitantePlazaAbonado()) {
+            return;
+        }
+
         throw new IllegalStateException(
                 "La plaza " + plaza.getCodigo() + " está reservada para un abonado");
+    }
+
+    private List<String> construirAvisosIngreso(Optional<Reserva> reservaOpt) {
+        if (reservaOpt.isEmpty()) {
+            return List.of();
+        }
+
+        Reserva reserva = reservaOpt.get();
+        var ajustes = ajustesService.getEntity();
+        LocalDate hoy = LocalDate.now();
+        List<String> avisos = new ArrayList<>();
+
+        if (reserva.getFechaFin() != null) {
+            LocalDate fin = reserva.getFechaFin();
+            if (ajustes.isAvisarAbonoEnGracia() && fin.isBefore(hoy)) {
+                avisos.add("Abono vencido el " + fin + " — dentro de los días de gracia; conviene renovar.");
+            } else if (ajustes.getDiasAvisoVencimiento() > 0) {
+                LocalDate limiteAviso = hoy.plusDays(ajustes.getDiasAvisoVencimiento());
+                if (!fin.isAfter(limiteAviso) && !fin.isBefore(hoy)) {
+                    long dias = java.time.temporal.ChronoUnit.DAYS.between(hoy, fin);
+                    avisos.add(
+                            dias == 0
+                                    ? "Abono vence hoy (" + fin + ")."
+                                    : "Abono vence en " + dias + " día(s) (" + fin + ").");
+                }
+            }
+        }
+
+        return avisos;
     }
 
     private void validarAutoSinEstadiaAbierta(Auto auto) {

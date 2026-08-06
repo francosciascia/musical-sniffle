@@ -83,7 +83,7 @@ export default function LoginPage() {
 
         <Box component="form" onSubmit={handleSubmit} sx={{ p: 2.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Ingresá con tu cuenta operativa
+            Acceso para personal (usuario o administrador). Los clientes no inician sesión.
           </Typography>
 
           {error && (

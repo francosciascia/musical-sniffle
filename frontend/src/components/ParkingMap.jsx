@@ -1,3 +1,4 @@
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Stage, Layer, Rect, Text } from 'react-konva'
 import GridLines from './GridLines'
 import FormaCells from './FormaCells'
@@ -25,22 +26,24 @@ function plazaLabel(plaza) {
   return plaza.codigo
 }
 
-export default function ParkingMap({
+function MapStage({
+  width,
+  height,
+  grid,
+  positioned,
   plazas,
-  piso,
   celdasForma,
-  gridCols,
-  gridRows,
+  piso,
   selectedId,
   onSelectPlaza,
+  scale = 1,
 }) {
-  const preferred = makeGrid(gridCols ?? GRID_COLS, gridRows ?? GRID_ROWS)
-  const { width, height, grid } = combinedStageSize(plazas, celdasForma, preferred)
-  const positioned = positionPlazas(plazas, grid)
   const m = plazaMetrics(grid.cell)
+  const stageW = Math.max(1, Math.floor(width * scale))
+  const stageH = Math.max(1, Math.floor(height * scale))
 
   return (
-    <Stage width={width} height={height}>
+    <Stage width={stageW} height={stageH} scaleX={scale} scaleY={scale}>
       <Layer>
         <Rect x={0} y={0} width={width} height={height} fill={colors.mapCanvas} listening={false} />
         <FormaCells celdas={celdasForma} grid={grid} />
@@ -109,5 +112,96 @@ export default function ParkingMap({
         )}
       </Layer>
     </Stage>
+  )
+}
+
+export default function ParkingMap({
+  plazas,
+  piso,
+  celdasForma,
+  gridCols,
+  gridRows,
+  selectedId,
+  onSelectPlaza,
+  /** Si true, escala el plano al tamaño del contenedor (sin scroll). */
+  fit = false,
+}) {
+  const preferred = useMemo(
+    () => makeGrid(gridCols ?? GRID_COLS, gridRows ?? GRID_ROWS),
+    [gridCols, gridRows],
+  )
+  const { width, height, grid } = useMemo(
+    () => combinedStageSize(plazas, celdasForma, preferred),
+    [plazas, celdasForma, preferred],
+  )
+  const positioned = useMemo(() => positionPlazas(plazas, grid), [plazas, grid])
+
+  const containerRef = useRef(null)
+  const [box, setBox] = useState({ w: 0, h: 0 })
+
+  useLayoutEffect(() => {
+    if (!fit) return undefined
+    const el = containerRef.current
+    if (!el) return undefined
+
+    const measure = () => {
+      setBox({ w: el.clientWidth, h: el.clientHeight })
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [fit])
+
+  if (!fit) {
+    return (
+      <MapStage
+        width={width}
+        height={height}
+        grid={grid}
+        positioned={positioned}
+        plazas={plazas}
+        celdasForma={celdasForma}
+        piso={piso}
+        selectedId={selectedId}
+        onSelectPlaza={onSelectPlaza}
+      />
+    )
+  }
+
+  const pad = 8
+  const scale =
+    box.w > 0 && box.h > 0
+      ? Math.min(1, (box.w - pad * 2) / width, (box.h - pad * 2) / height)
+      : 1
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        minHeight: 0,
+        minWidth: 0,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxSizing: 'border-box',
+      }}
+    >
+      <MapStage
+        width={width}
+        height={height}
+        grid={grid}
+        positioned={positioned}
+        plazas={plazas}
+        celdasForma={celdasForma}
+        piso={piso}
+        selectedId={selectedId}
+        onSelectPlaza={onSelectPlaza}
+        scale={scale}
+      />
+    </div>
   )
 }

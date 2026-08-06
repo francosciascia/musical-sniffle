@@ -7,16 +7,17 @@ import EstadiasPage from './pages/EstadiasPage'
 import TarifasPage from './pages/TarifasPage'
 import ReservasPage from './pages/ReservasPage'
 import HistorialPage from './pages/HistorialPage'
-import MisAutosPage from './pages/MisAutosPage'
-import MiReservaPage from './pages/MiReservaPage'
 import MapaEditorPage from './pages/MapaEditorPage'
 import ConfigPage from './pages/ConfigPage'
 import ClientesPage from './pages/ClientesPage'
-import { getRol, getToken, homePathForRol } from './utils/auth'
+import { getRol, homePathForRol, ensureValidSession } from './utils/auth'
 import { appTheme } from './theme/theme'
 
+const STAFF = ['USUARIO', 'ADMINISTRADOR']
+const ADMIN = ['ADMINISTRADOR']
+
 function RoleRoute({ roles, children }) {
-  if (!getToken()) return <Navigate to="/login" replace />
+  if (!ensureValidSession()) return <Navigate to="/login" replace />
   const rol = getRol()
   if (roles && !roles.includes(rol)) {
     return <Navigate to={homePathForRol(rol)} replace />
@@ -25,9 +26,15 @@ function RoleRoute({ roles, children }) {
 }
 
 function HomeRedirect() {
-  const rol = getRol()
-  if (!getToken()) return <Navigate to="/login" replace />
-  return <Navigate to={homePathForRol(rol)} replace />
+  if (!ensureValidSession()) return <Navigate to="/login" replace />
+  return <Navigate to={homePathForRol(getRol())} replace />
+}
+
+function LoginRoute() {
+  if (ensureValidSession()) {
+    return <Navigate to={homePathForRol(getRol())} replace />
+  }
+  return <LoginPage />
 }
 
 export default function App() {
@@ -36,13 +43,13 @@ export default function App() {
       <CssBaseline />
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LoginRoute />} />
           <Route path="/" element={<HomeRedirect />} />
 
           <Route
             path="/mapa"
             element={
-              <RoleRoute roles={['OPERADOR', 'SUPER_ADMIN']}>
+              <RoleRoute roles={STAFF}>
                 <MapaPage />
               </RoleRoute>
             }
@@ -50,7 +57,7 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <RoleRoute roles={['OPERADOR', 'SUPER_ADMIN']}>
+              <RoleRoute roles={STAFF}>
                 <DashboardPage />
               </RoleRoute>
             }
@@ -58,7 +65,7 @@ export default function App() {
           <Route
             path="/estadias"
             element={
-              <RoleRoute roles={['OPERADOR', 'SUPER_ADMIN']}>
+              <RoleRoute roles={STAFF}>
                 <EstadiasPage />
               </RoleRoute>
             }
@@ -66,7 +73,7 @@ export default function App() {
           <Route
             path="/historial"
             element={
-              <RoleRoute roles={['OPERADOR', 'SUPER_ADMIN']}>
+              <RoleRoute roles={STAFF}>
                 <HistorialPage />
               </RoleRoute>
             }
@@ -74,7 +81,7 @@ export default function App() {
           <Route
             path="/clientes"
             element={
-              <RoleRoute roles={['SUPER_ADMIN']}>
+              <RoleRoute roles={ADMIN}>
                 <ClientesPage />
               </RoleRoute>
             }
@@ -82,7 +89,7 @@ export default function App() {
           <Route
             path="/config"
             element={
-              <RoleRoute roles={['SUPER_ADMIN']}>
+              <RoleRoute roles={ADMIN}>
                 <ConfigPage />
               </RoleRoute>
             }
@@ -90,7 +97,7 @@ export default function App() {
           <Route
             path="/tarifas"
             element={
-              <RoleRoute roles={['SUPER_ADMIN']}>
+              <RoleRoute roles={ADMIN}>
                 <TarifasPage />
               </RoleRoute>
             }
@@ -98,32 +105,17 @@ export default function App() {
           <Route
             path="/reservas"
             element={
-              <RoleRoute roles={['SUPER_ADMIN']}>
+              <RoleRoute roles={ADMIN}>
                 <ReservasPage />
               </RoleRoute>
             }
           />
+          <Route path="/cobros" element={<Navigate to="/reservas?tab=cobrar" replace />} />
           <Route
             path="/diseno-mapa"
             element={
-              <RoleRoute roles={['SUPER_ADMIN']}>
+              <RoleRoute roles={ADMIN}>
                 <MapaEditorPage />
-              </RoleRoute>
-            }
-          />
-          <Route
-            path="/mis-autos"
-            element={
-              <RoleRoute roles={['CLIENTE']}>
-                <MisAutosPage />
-              </RoleRoute>
-            }
-          />
-          <Route
-            path="/mi-reserva"
-            element={
-              <RoleRoute roles={['CLIENTE']}>
-                <MiReservaPage />
               </RoleRoute>
             }
           />

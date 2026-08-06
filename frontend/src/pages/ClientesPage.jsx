@@ -137,12 +137,12 @@ export default function ClientesPage() {
     setError('')
     setAutosCliente(cliente)
     setAutoForm(EMPTY_AUTO)
+    setAutos([])
     try {
       const { data } = await api.get(`/admin/clientes/${cliente.id}/autos`)
       setAutos(data)
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudieron cargar los autos')
-      setAutos([])
     }
   }
 
@@ -266,8 +266,13 @@ export default function ClientesPage() {
                       <Button size="small" startIcon={<Pencil size={14} />} onClick={() => abrirEditar(c)}>
                         Editar
                       </Button>
-                      <Button size="small" startIcon={<Car size={14} />} onClick={() => abrirAutos(c)}>
-                        Autos
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Car size={14} />}
+                        onClick={() => abrirAutos(c)}
+                      >
+                        Ver autos
                       </Button>
                     </Stack>
                   </TableCell>

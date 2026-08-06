@@ -19,7 +19,7 @@ import {
 import AppLayout from '../components/AppLayout'
 import api from '../api/client'
 import { colors } from '../theme/colors'
-import { isAdmin } from '../utils/auth'
+import { getRol, isAdmin } from '../utils/auth'
 
 const RANGOS = [
   { id: '7', label: 'Últimos 7 días', days: 7 },
@@ -227,7 +227,7 @@ function OccupancyStrip({ occupancy }) {
 }
 
 export default function DashboardPage() {
-  const admin = isAdmin()
+  const admin = isAdmin(getRol())
   const [rango, setRango] = useState('30')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)

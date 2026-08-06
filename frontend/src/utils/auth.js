@@ -1,9 +1,19 @@
+const LEGACY_ROLES = {
+  OPERADOR: 'USUARIO',
+  SUPER_ADMIN: 'ADMINISTRADOR',
+}
+
 export function getToken() {
   return localStorage.getItem('token')
 }
 
 export function getRol() {
-  return localStorage.getItem('rol')
+  const raw = localStorage.getItem('rol')
+  const mapped = LEGACY_ROLES[raw] || raw
+  if (mapped !== raw && mapped) {
+    localStorage.setItem('rol', mapped)
+  }
+  return mapped
 }
 
 export function getNombre() {
@@ -16,15 +26,30 @@ export function logout() {
   localStorage.removeItem('nombre')
 }
 
-export function homePathForRol(rol) {
-  if (rol === 'CLIENTE') return '/mis-autos'
+export function homePathForRol() {
   return '/mapa'
 }
 
-export function isOperador(rol) {
-  return rol === 'OPERADOR' || rol === 'SUPER_ADMIN'
+/** Personal de operación (usuario) o administrador. */
+export function isStaff(rol = getRol()) {
+  return rol === 'USUARIO' || rol === 'ADMINISTRADOR'
 }
 
-export function isAdmin(rol) {
-  return rol === 'SUPER_ADMIN'
+/** @deprecated usar isStaff */
+export function isOperador(rol) {
+  return isStaff(rol)
+}
+
+export function isAdmin(rol = getRol()) {
+  return rol === 'ADMINISTRADOR'
+}
+
+/** Si el rol guardado no sirve para entrar, limpiar sesión. */
+export function ensureValidSession() {
+  if (!getToken()) return false
+  if (!isStaff(getRol())) {
+    logout()
+    return false
+  }
+  return true
 }

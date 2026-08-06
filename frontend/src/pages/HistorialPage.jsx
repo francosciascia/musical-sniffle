@@ -16,6 +16,7 @@ import {
 } from '@mui/material'
 import { Download } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
+import DateField from '../components/DateField'
 import TablePager from '../components/TablePager'
 import api from '../api/client'
 import { usePagedRows } from '../hooks/usePagedRows'
@@ -123,21 +124,17 @@ export default function HistorialPage() {
       </Stack>
 
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-        <TextField
+        <DateField
           label="Desde"
-          type="date"
           size="small"
           value={desde}
           onChange={(e) => setDesde(e.target.value)}
-          InputLabelProps={{ shrink: true }}
         />
-        <TextField
+        <DateField
           label="Hasta"
-          type="date"
           size="small"
           value={hasta}
           onChange={(e) => setHasta(e.target.value)}
-          InputLabelProps={{ shrink: true }}
         />
         <Button variant="outlined" onClick={cargar}>
           Filtrar

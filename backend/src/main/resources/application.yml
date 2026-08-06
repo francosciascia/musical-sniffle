@@ -29,6 +29,11 @@ app:
     expiration-ms: 86400000
   estacionamiento:
     plaza-obligatoria: false
+  mercadopago:
+    enabled: false
+    access-token: ${MP_ACCESS_TOKEN:}
+    # En local: URL de ngrok + /api/webhooks/mercadopago
+    notification-url: ${MP_NOTIFICATION_URL:}
 
 springdoc:
   swagger-ui:

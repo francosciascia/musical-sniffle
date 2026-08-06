@@ -1,11 +1,11 @@
 package com.musicalsniffle.controller;
 
 import com.musicalsniffle.dto.AutoRequest;
+import com.musicalsniffle.dto.AutoResponse;
 import com.musicalsniffle.dto.CalculoResponse;
 import com.musicalsniffle.dto.CerrarEstadiaRequest;
 import com.musicalsniffle.dto.EstadiaResponse;
 import com.musicalsniffle.dto.TicketResponse;
-import com.musicalsniffle.model.Auto;
 import com.musicalsniffle.security.UserPrincipal;
 import com.musicalsniffle.service.EstacionamientoService;
 import com.musicalsniffle.service.TicketService;
@@ -32,16 +32,16 @@ public class EstacionamientoController {
     private final TicketService ticketService;
 
     @GetMapping("/autos")
-    public List<Auto> listarAutos() {
-        return estacionamientoService.listarAutos();
+    public List<AutoResponse> listarAutos() {
+        return estacionamientoService.listarAutos().stream().map(AutoResponse::from).toList();
     }
 
     @PostMapping("/autos")
     @ResponseStatus(HttpStatus.CREATED)
-    public Auto crearAuto(
+    public AutoResponse crearAuto(
             @Valid @RequestBody AutoRequest request,
             @AuthenticationPrincipal UserPrincipal user) {
-        return estacionamientoService.crearAuto(request, user.getPersona());
+        return AutoResponse.from(estacionamientoService.crearAuto(request, user.getPersona()));
     }
 
     @PostMapping("/estadias/{id}/cerrar")

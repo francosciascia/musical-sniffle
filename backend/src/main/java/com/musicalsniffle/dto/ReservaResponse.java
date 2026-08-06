@@ -25,8 +25,15 @@ public class ReservaResponse {
     private BigDecimal montoMensual;
     private EstadoReserva estado;
     private LocalDateTime creadaEn;
+    /** Solo en lista a cobrar: vencido | vence_hoy | por_vencer | suspendida */
+    private String motivoCobro;
+    private Long diasParaVencer;
 
     public static ReservaResponse from(Reserva reserva) {
+        return from(reserva, null, null);
+    }
+
+    public static ReservaResponse from(Reserva reserva, String motivoCobro, Long diasParaVencer) {
         return ReservaResponse.builder()
                 .id(reserva.getId())
                 .clienteId(reserva.getCliente().getId())
@@ -40,6 +47,8 @@ public class ReservaResponse {
                 .montoMensual(reserva.getMontoMensual())
                 .estado(reserva.getEstado())
                 .creadaEn(reserva.getCreadaEn())
+                .motivoCobro(motivoCobro)
+                .diasParaVencer(diasParaVencer)
                 .build();
     }
 }

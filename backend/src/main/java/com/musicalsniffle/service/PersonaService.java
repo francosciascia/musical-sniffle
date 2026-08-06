@@ -28,24 +28,7 @@ public class PersonaService {
     private final SuperAdminRepository superAdminRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Transactional
-    public PersonaResponse registrarCliente(PersonaRequest request) {
-        validarDatosUnicos(request.getEmail(), request.getDni());
-
-        Cliente cliente = Cliente.builder()
-                .nombre(request.getNombre())
-                .apellido(request.getApellido())
-                .dni(request.getDni())
-                .email(request.getEmail())
-                .telefono(request.getTelefono())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .activo(true)
-                .build();
-
-        return PersonaResponse.from(clienteRepository.save(cliente));
-    }
-
-    /** Alta desde admin: sin contraseña; solo datos para reservas / operación. */
+    /** Alta desde admin: sin contraseña de acceso; solo ficha para reservas / operación. */
     @Transactional
     public PersonaResponse registrarClienteAdmin(ClienteAdminRequest request) {
         validarDatosUnicos(request.getEmail(), request.getDni());

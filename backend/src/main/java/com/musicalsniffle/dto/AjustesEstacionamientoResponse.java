@@ -9,6 +9,14 @@ public class AjustesEstacionamientoResponse {
 
     private boolean plazaObligatoria;
     private boolean permitirDosMotosPorPlaza;
-    /** Derivado: 2 si la opción está activa, si no 1. */
     private int motosPorPlaza;
+
+    private int diasGraciaAbono;
+    private int diasAvisoVencimiento;
+    private boolean permitirVisitantePlazaAbonado;
+    private boolean avisarAbonoEnGracia;
+
+    private int diasHorizonteCobro;
+    private int diasAtrasoParaSuspender;
+    private boolean bloquearIngresoSiSuspendida;
 }

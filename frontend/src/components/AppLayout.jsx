@@ -43,14 +43,8 @@ function buildNavItems(rol) {
   if (isAdmin(rol)) {
     items.push(
       { to: '/clientes', label: 'Clientes', icon: Users },
-      { to: '/reservas', label: 'Reservas', icon: ClipboardList },
+      { to: '/reservas', label: 'Abonos', icon: ClipboardList },
       { to: '/config', label: 'Configuración', icon: Settings },
-    )
-  }
-  if (rol === 'CLIENTE') {
-    items.push(
-      { to: '/mis-autos', label: 'Mis autos', icon: Car },
-      { to: '/mi-reserva', label: 'Mi reserva', icon: ClipboardList },
     )
   }
   if (isOperador(rol)) {

@@ -19,6 +19,6 @@ public class SuperAdmin extends Persona {
 
     @Override
     public Rol getRol() {
-        return Rol.SUPER_ADMIN;
+        return Rol.ADMINISTRADOR;
     }
 }

@@ -1,9 +1,9 @@
 package com.musicalsniffle.controller;
 
 import com.musicalsniffle.dto.AutoRequest;
+import com.musicalsniffle.dto.AutoResponse;
 import com.musicalsniffle.dto.ClienteAdminRequest;
 import com.musicalsniffle.dto.PersonaResponse;
-import com.musicalsniffle.model.Auto;
 import com.musicalsniffle.model.Cliente;
 import com.musicalsniffle.repository.ClienteRepository;
 import com.musicalsniffle.service.EstacionamientoService;
@@ -37,18 +37,20 @@ public class ClienteAdminController {
     }
 
     @GetMapping("/{id}/autos")
-    public List<Auto> listarAutos(@PathVariable Long id) {
+    public List<AutoResponse> listarAutos(@PathVariable Long id) {
         if (!clienteRepository.existsById(id)) {
             throw new IllegalArgumentException("Cliente no encontrado: " + id);
         }
-        return estacionamientoService.listarAutosCliente(id);
+        return estacionamientoService.listarAutosCliente(id).stream()
+                .map(AutoResponse::from)
+                .toList();
     }
 
     @PostMapping("/{id}/autos")
     @ResponseStatus(HttpStatus.CREATED)
-    public Auto registrarAuto(@PathVariable Long id, @Valid @RequestBody AutoRequest request) {
+    public AutoResponse registrarAuto(@PathVariable Long id, @Valid @RequestBody AutoRequest request) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + id));
-        return estacionamientoService.registrarAutoCliente(request, cliente);
+        return AutoResponse.from(estacionamientoService.registrarAutoCliente(request, cliente));
     }
 }

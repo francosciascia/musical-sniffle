@@ -2,6 +2,7 @@ package com.musicalsniffle.controller;
 
 import com.musicalsniffle.dto.PlazaRequest;
 import com.musicalsniffle.dto.PlazaUpdateRequest;
+import com.musicalsniffle.dto.PagoMensualRequest;
 import com.musicalsniffle.dto.ReservaRequest;
 import com.musicalsniffle.dto.ReservaResponse;
 import com.musicalsniffle.model.EstadoEstadia;
@@ -141,11 +142,31 @@ public class ReservaAdminController {
         return reservaService.cancelar(id, user.getPersona());
     }
 
+    @GetMapping("/reservas/a-cobrar")
+    public List<ReservaResponse> listarACobrar() {
+        return reservaService.listarACobrar();
+    }
+
+    @PostMapping("/reservas/{id}/suspender")
+    public ReservaResponse suspender(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal user) {
+        return reservaService.suspender(id, user.getPersona());
+    }
+
+    @PostMapping("/reservas/{id}/reactivar")
+    public ReservaResponse reactivar(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal user) {
+        return reservaService.reactivar(id, user.getPersona());
+    }
+
     @PostMapping("/reservas/{id}/pago-mensual")
     public ReservaResponse registrarPagoMensual(
             @PathVariable Long id,
+            @Valid @RequestBody PagoMensualRequest request,
             @AuthenticationPrincipal UserPrincipal user) {
-        return reservaService.registrarPagoMensual(id, user.getPersona());
+        return reservaService.registrarPagoMensual(id, request, user.getPersona());
     }
 
     private void validarPosicionLibre(int piso, Integer posX, Integer posY, Long excluirId) {

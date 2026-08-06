@@ -12,7 +12,7 @@ const TABS = [
   { id: 'diseno', label: 'Diseño' },
   { id: 'tarifas', label: 'Tarifas' },
   { id: 'reglas', label: 'Reglas' },
-  { id: 'operadores', label: 'Operadores' },
+  { id: 'operadores', label: 'Usuarios' },
 ]
 
 export default function ConfigPage() {

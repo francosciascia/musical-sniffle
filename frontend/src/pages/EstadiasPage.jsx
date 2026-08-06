@@ -28,6 +28,7 @@ export default function EstadiasPage() {
   const [busqueda, setBusqueda] = useState('')
   const [tipoBusqueda, setTipoBusqueda] = useState('patente')
   const [resultado, setResultado] = useState(null)
+  const [candidatos, setCandidatos] = useState([])
   const [egresoTarget, setEgresoTarget] = useState(null)
   const { page, rowsPerPage, setPage, setRowsPerPage, paged, count } = usePagedRows(estadias)
 
@@ -50,6 +51,7 @@ export default function EstadiasPage() {
   async function buscar() {
     setError('')
     setResultado(null)
+    setCandidatos([])
     if (!busqueda.trim()) {
       setError('Ingresá patente o ticket')
       return
@@ -60,7 +62,12 @@ export default function EstadiasPage() {
         : { ticket: busqueda.trim() }
     try {
       const { data } = await api.get('/operador/estadias/buscar', { params: param })
-      setResultado(data)
+      if (Array.isArray(data)) {
+        setCandidatos(data)
+        if (data.length === 1) setResultado(data[0])
+      } else {
+        setResultado(data)
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'No se encontró estadía activa')
     }
@@ -112,6 +119,34 @@ export default function EstadiasPage() {
             Buscar
           </Button>
         </Stack>
+
+        {candidatos.length > 1 && !resultado && (
+          <Box sx={{ mt: 1.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+              Varias patentes con “{busqueda}”. Elegí una:
+            </Typography>
+            <Stack spacing={0.75}>
+              {candidatos.map((c) => (
+                <Button
+                  key={c.id}
+                  variant="outlined"
+                  onClick={() => setResultado(c)}
+                  sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                >
+                  <Box sx={{ textAlign: 'left' }}>
+                    <Typography className="mono" sx={{ fontWeight: 700 }}>
+                      {c.patente}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Plaza {c.plazaCodigo || '—'}
+                      {c.abonado ? ' · Abonado' : ''}
+                    </Typography>
+                  </Box>
+                </Button>
+              ))}
+            </Stack>
+          </Box>
+        )}
 
         {resultado && (
           <Box

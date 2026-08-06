@@ -11,6 +11,8 @@ import {
   MenuItem,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -21,7 +23,10 @@ import {
   Typography,
 } from '@mui/material'
 import { MapPin } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import AppLayout from '../components/AppLayout'
+import DateField from '../components/DateField'
+import PagoAbonoDialog from '../components/PagoAbonoDialog'
 import PlazaMapPickerDialog from '../components/PlazaMapPickerDialog'
 import TablePager from '../components/TablePager'
 import api from '../api/client'
@@ -53,29 +58,57 @@ const formVacio = () => ({
   estado: 'ACTIVA',
 })
 
+function motivoLabel(r) {
+  if (r.motivoCobro === 'suspendida') return 'Suspendido'
+  if (r.motivoCobro === 'vencido') return `Vencido hace ${Math.abs(r.diasParaVencer)} día(s)`
+  if (r.motivoCobro === 'vence_hoy') return 'Vence hoy'
+  if (r.motivoCobro === 'por_vencer') return `Vence en ${r.diasParaVencer} día(s)`
+  if (r.motivoCobro === 'sin_fecha') return 'Sin fecha de fin'
+  if (r.motivoCobro === 'al_dia') return `Al día hasta ${r.fechaFin}`
+  return '—'
+}
+
+function motivoColor(motivo) {
+  if (motivo === 'suspendida' || motivo === 'vencido') return 'error'
+  if (motivo === 'vence_hoy' || motivo === 'por_vencer') return 'warning'
+  if (motivo === 'al_dia') return 'success'
+  return 'default'
+}
+
 export default function ReservasPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') === 'cobrar' ? 'cobrar' : 'todos'
   const [reservas, setReservas] = useState([])
+  const [aCobrar, setACobrar] = useState([])
   const [clientes, setClientes] = useState([])
   const [plazas, setPlazas] = useState([])
   const [autos, setAutos] = useState([])
   const [tarifas, setTarifas] = useState([])
   const [error, setError] = useState('')
+  const [ok, setOk] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState(formVacio)
-  const { page, rowsPerPage, setPage, setRowsPerPage, paged, count } = usePagedRows(reservas)
+  const [pagoTarget, setPagoTarget] = useState(null)
+
+  const lista = tab === 'cobrar' ? aCobrar : reservas
+  const { page, rowsPerPage, setPage, setRowsPerPage, paged, count } = usePagedRows(lista, {
+    resetKey: tab,
+  })
 
   const cargar = useCallback(async () => {
     try {
-      const [resReservas, resUsuarios, resPlazas, resAutos, resTarifas] = await Promise.all([
+      const [resReservas, resCobrar, resUsuarios, resPlazas, resAutos, resTarifas] = await Promise.all([
         api.get('/admin/reservas'),
+        api.get('/admin/reservas/a-cobrar'),
         api.get('/admin/usuarios'),
         api.get('/admin/plazas'),
         api.get('/autos'),
         api.get('/admin/tarifas'),
       ])
       setReservas(resReservas.data)
+      setACobrar(resCobrar.data)
       setClientes(resUsuarios.data.filter((u) => u.rol === 'CLIENTE'))
       setPlazas(resPlazas.data.filter((p) => p.activa))
       setAutos(resAutos.data)
@@ -168,7 +201,7 @@ export default function ReservasPage() {
   }
 
   async function cancelar(id) {
-    if (!window.confirm('¿Cancelar esta reserva?')) return
+    if (!window.confirm('¿Cancelar este abono?')) return
     try {
       await api.post(`/admin/reservas/${id}/cancelar`)
       cargar()
@@ -177,14 +210,30 @@ export default function ReservasPage() {
     }
   }
 
-  async function pagoMensual(id) {
+  async function suspender(id) {
+    if (!window.confirm('¿Estás seguro de suspender este abono?')) return
     try {
-      await api.post(`/admin/reservas/${id}/pago-mensual`)
+      await api.post(`/admin/reservas/${id}/suspender`)
       cargar()
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo registrar el pago')
+      setError(err.response?.data?.error || 'No se pudo suspender')
     }
   }
+
+  async function reactivar(id) {
+    try {
+      await api.post(`/admin/reservas/${id}/reactivar`)
+      cargar()
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo reactivar')
+    }
+  }
+
+  function setTab(next) {
+    setSearchParams(next === 'cobrar' ? { tab: 'cobrar' } : {}, { replace: true })
+  }
+
+  const pendientes = aCobrar.filter((r) => r.motivoCobro && r.motivoCobro !== 'al_dia').length
 
   return (
     <AppLayout maxWidth="xl">
@@ -195,25 +244,39 @@ export default function ReservasPage() {
           gap: 1.5,
           justifyContent: 'space-between',
           alignItems: { xs: 'stretch', sm: 'center' },
-          mb: 2,
+          mb: 1,
         }}
       >
         <Box>
           <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-            Reservas mensuales
+            Abonos (lugar fijo)
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Elegí un cliente de la lista (crealos en Clientes si falta).
+            Cliente + plaza + patentes. Registrá el pago indicando cómo cobraste.
           </Typography>
         </Box>
         <Button variant="contained" onClick={() => setDialogOpen(true)}>
-          Nueva reserva
+          Nuevo abono
         </Button>
       </Box>
+
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab value="todos" label="Todos" />
+        <Tab value="cobrar" label={pendientes > 0 ? `A cobrar (${pendientes})` : 'A cobrar'} />
+      </Tabs>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
           {error}
+        </Alert>
+      )}
+      {ok && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setOk('')}>
+          {ok}
         </Alert>
       )}
 
@@ -227,7 +290,7 @@ export default function ReservasPage() {
               <TableCell>Desde</TableCell>
               <TableCell>Hasta</TableCell>
               <TableCell>$/mes</TableCell>
-              <TableCell>Estado</TableCell>
+              <TableCell>{tab === 'cobrar' ? 'Situación' : 'Estado'}</TableCell>
               <TableCell align="right">Acciones</TableCell>
             </TableRow>
           </TableHead>
@@ -235,7 +298,7 @@ export default function ReservasPage() {
             {count === 0 && (
               <TableRow>
                 <TableCell colSpan={8} align="center">
-                  No hay reservas
+                  No hay abonos
                 </TableCell>
               </TableRow>
             )}
@@ -248,14 +311,28 @@ export default function ReservasPage() {
                 <TableCell>{r.fechaFin || '—'}</TableCell>
                 <TableCell>{formatMoney(r.montoMensual)}</TableCell>
                 <TableCell>
-                  <Chip label={r.estado} color={estadoColor(r.estado)} size="small" />
+                  {tab === 'cobrar' ? (
+                    <Chip label={motivoLabel(r)} color={motivoColor(r.motivoCobro)} size="small" />
+                  ) : (
+                    <Chip label={r.estado} color={estadoColor(r.estado)} size="small" />
+                  )}
                 </TableCell>
                 <TableCell align="right">
-                  {r.estado === 'ACTIVA' && (
+                  {(r.estado === 'ACTIVA' || r.estado === 'SUSPENDIDA') && (
                     <>
-                      <Button size="small" onClick={() => pagoMensual(r.id)}>
-                        Pago mensual
+                      <Button size="small" variant="contained" onClick={() => setPagoTarget(r)}>
+                        Registrar pago
                       </Button>
+                      {r.estado === 'ACTIVA' && (
+                        <Button size="small" color="warning" onClick={() => suspender(r.id)}>
+                          Suspender
+                        </Button>
+                      )}
+                      {r.estado === 'SUSPENDIDA' && (
+                        <Button size="small" onClick={() => reactivar(r.id)}>
+                          Reactivar
+                        </Button>
+                      )}
                       <Button size="small" color="error" onClick={() => cancelar(r.id)}>
                         Cancelar
                       </Button>
@@ -274,6 +351,16 @@ export default function ReservasPage() {
           onRowsPerPageChange={setRowsPerPage}
         />
       </TableContainer>
+
+      <PagoAbonoDialog
+        open={!!pagoTarget}
+        reserva={pagoTarget}
+        onClose={() => setPagoTarget(null)}
+        onSuccess={() => {
+          setOk('Pago registrado')
+          cargar()
+        }}
+      />
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Nueva reserva mensual</DialogTitle>
@@ -325,22 +412,35 @@ export default function ReservasPage() {
             <TextField
               select
               label="Autos del cliente"
-              value={form.autoIds}
-              onChange={(e) =>
-                setAutoIds(
-                  typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value,
-                )
-              }
-              SelectProps={{ multiple: true }}
+              value={form.autoIds.map(String)}
+              onChange={(e) => {
+                const raw = e.target.value
+                setAutoIds(typeof raw === 'string' ? raw.split(',').filter(Boolean) : raw.map(String))
+              }}
+              slotProps={{
+                select: {
+                  multiple: true,
+                  renderValue: (selected) => {
+                    const ids = selected || []
+                    if (!ids.length) return 'Ninguno'
+                    return ids
+                      .map((id) => autosCliente.find((a) => String(a.id) === String(id))?.patente || id)
+                      .join(', ')
+                  },
+                },
+              }}
               fullWidth
+              disabled={!form.clienteId || autosCliente.length === 0}
               helperText={
-                autosCliente.length === 0
-                  ? 'El cliente no tiene autos registrados'
-                  : 'Si elegís varios, el abono sugerido es el del tipo más caro'
+                !form.clienteId
+                  ? 'Primero elegí un cliente'
+                  : autosCliente.length === 0
+                    ? 'El cliente no tiene autos — cargalos en Clientes → Ver autos'
+                    : 'Tocá para marcar uno o más vehículos'
               }
             >
               {autosCliente.map((a) => (
-                <MenuItem key={a.id} value={a.id}>
+                <MenuItem key={a.id} value={String(a.id)}>
                   {a.patente} ({a.tipo}
                   {precioPorTipo[a.tipo] != null
                     ? ` · ${formatMoney(precioPorTipo[a.tipo])}/mes`
@@ -351,20 +451,17 @@ export default function ReservasPage() {
             </TextField>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
+              <DateField
                 label="Fecha de inicio"
-                type="date"
                 value={form.fechaInicio}
                 onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })}
-                InputLabelProps={{ shrink: true }}
                 fullWidth
+                required
               />
-              <TextField
+              <DateField
                 label="Fecha de fin"
-                type="date"
                 value={form.fechaFin}
                 onChange={(e) => setForm({ ...form, fechaFin: e.target.value })}
-                InputLabelProps={{ shrink: true }}
                 fullWidth
                 helperText="Opcional — vacío = indefinida"
               />

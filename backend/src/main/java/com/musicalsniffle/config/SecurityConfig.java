@@ -38,10 +38,10 @@ public class SecurityConfig {
                                 "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/auth/login", "/api/auth/register/cliente").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("SUPER_ADMIN")
-                        .requestMatchers("/api/cliente/**").hasRole("CLIENTE")
-                        .requestMatchers("/api/operador/**").hasAnyRole("OPERADOR", "SUPER_ADMIN")
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/webhooks/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers("/api/operador/**").hasAnyRole("USUARIO", "ADMINISTRADOR")
                         .requestMatchers(
                                 "/api/autos",
                                 "/api/autos/**",
@@ -49,7 +49,7 @@ public class SecurityConfig {
                                 "/api/estadias/**",
                                 "/api/tickets",
                                 "/api/tickets/**")
-                                .hasAnyRole("OPERADOR", "SUPER_ADMIN")
+                                .hasAnyRole("USUARIO", "ADMINISTRADOR")
                         .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(

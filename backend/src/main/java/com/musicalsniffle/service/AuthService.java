@@ -3,6 +3,7 @@ package com.musicalsniffle.service;
 import com.musicalsniffle.dto.AuthResponse;
 import com.musicalsniffle.dto.LoginRequest;
 import com.musicalsniffle.model.Persona;
+import com.musicalsniffle.model.Rol;
 import com.musicalsniffle.model.TipoEvento;
 import com.musicalsniffle.repository.PersonaRepository;
 import com.musicalsniffle.security.JwtService;
@@ -31,6 +32,14 @@ public class AuthService {
 
         Persona persona = personaRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (persona.getRol() == Rol.CLIENTE) {
+            throw new IllegalArgumentException("Los clientes no tienen acceso al sistema. Solo personal (usuario o administrador).");
+        }
+
+        if (!persona.isActivo()) {
+            throw new IllegalArgumentException("Usuario inactivo");
+        }
 
         historialService.registrar(
                 TipoEvento.LOGIN,

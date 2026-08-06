@@ -63,7 +63,7 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
 
       let autoId
       const { data: autos } = await api.get('/autos')
-      const existente = autos.find((a) => a.patente === patenteNorm)
+      const existente = autos.find((a) => normalizePatente(a.patente) === patenteNorm)
 
       if (existente) {
         autoId = existente.id

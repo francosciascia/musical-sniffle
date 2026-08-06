@@ -43,9 +43,9 @@ export default function OperadoresPanel() {
   const cargar = useCallback(async () => {
     try {
       const { data } = await api.get('/admin/usuarios')
-      setItems(data.filter((u) => u.rol === 'OPERADOR'))
+      setItems(data.filter((u) => u.rol === 'USUARIO'))
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudieron cargar los operadores')
+      setError(err.response?.data?.error || 'No se pudieron cargar los usuarios')
     }
   }, [])
 
@@ -73,10 +73,10 @@ export default function OperadoresPanel() {
       })
       setOpen(false)
       setForm(EMPTY)
-      setOk('Operador creado')
+      setOk('Usuario creado')
       cargar()
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo crear el operador')
+      setError(err.response?.data?.error || 'No se pudo crear el usuario')
     } finally {
       setLoading(false)
     }
@@ -112,15 +112,15 @@ export default function OperadoresPanel() {
       >
         <Stack direction="row" spacing={1} alignItems="center">
           <UserCog size={18} color={colors.primary} />
-          <Typography sx={{ fontWeight: 700 }}>Operadores</Typography>
+          <Typography sx={{ fontWeight: 700 }}>Usuarios</Typography>
         </Stack>
         <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setOpen(true)}>
-          Nuevo operador
+          Nuevo usuario
         </Button>
       </Stack>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Alta y baja de usuarios de boletería (rol OPERADOR).
+        Personal de operación (rol usuario). Los clientes no tienen login.
       </Typography>
 
       {error && (
@@ -150,7 +150,7 @@ export default function OperadoresPanel() {
               <TableRow>
                 <TableCell colSpan={5}>
                   <Typography variant="body2" color="text.secondary">
-                    No hay operadores todavía.
+                    No hay usuarios todavía.
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -184,7 +184,7 @@ export default function OperadoresPanel() {
       </TableContainer>
 
       <Dialog open={open} onClose={() => !loading && setOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Nuevo operador</DialogTitle>
+        <DialogTitle>Nuevo usuario</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, pt: 1 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <TextField label="Nombre" value={form.nombre} onChange={setField('nombre')} fullWidth required />
