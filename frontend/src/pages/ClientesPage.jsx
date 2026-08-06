@@ -20,8 +20,11 @@ import {
 } from '@mui/material'
 import { Car, Pencil, Plus, Search, Users } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
+import TablePager from '../components/TablePager'
 import api from '../api/client'
+import { usePagedRows } from '../hooks/usePagedRows'
 import { colors } from '../theme/colors'
+import { isPatenteValida, normalizePatente, patenteHelperText } from '../utils/patente'
 
 const EMPTY = {
   nombre: '',
@@ -71,6 +74,10 @@ export default function ClientesPage() {
       return blob.includes(term)
     })
   }, [clientes, q])
+
+  const { page, rowsPerPage, setPage, setRowsPerPage, paged, count } = usePagedRows(filtrados, {
+    resetKey: q,
+  })
 
   function setField(key) {
     return (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -145,7 +152,7 @@ export default function ClientesPage() {
     setError('')
     try {
       await api.post(`/admin/clientes/${autosCliente.id}/autos`, {
-        patente: autoForm.patente.trim().toUpperCase(),
+        patente: normalizePatente(autoForm.patente),
         tipo: autoForm.tipo,
         modelo: autoForm.modelo.trim(),
       })
@@ -167,7 +174,7 @@ export default function ClientesPage() {
     form.email.includes('@') &&
     form.telefono.trim().length >= 8
 
-  const autoOk = autoForm.patente.trim().length >= 5 && autoForm.modelo.trim()
+  const autoOk = isPatenteValida(autoForm.patente) && autoForm.modelo.trim()
 
   return (
     <AppLayout>
@@ -234,7 +241,7 @@ export default function ClientesPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filtrados.length === 0 ? (
+            {count === 0 ? (
               <TableRow>
                 <TableCell colSpan={6}>
                   <Typography variant="body2" color="text.secondary">
@@ -243,7 +250,7 @@ export default function ClientesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtrados.map((c) => (
+              paged.map((c) => (
                 <TableRow key={c.id} hover>
                   <TableCell>
                     {c.nombre} {c.apellido}
@@ -269,6 +276,13 @@ export default function ClientesPage() {
             )}
           </TableBody>
         </Table>
+        <TablePager
+          count={count}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={setRowsPerPage}
+        />
       </TableContainer>
 
       <Dialog
@@ -357,9 +371,12 @@ export default function ClientesPage() {
               <TextField
                 label="Patente"
                 value={autoForm.patente}
-                onChange={(e) => setAutoForm((f) => ({ ...f, patente: e.target.value.toUpperCase() }))}
+                onChange={(e) =>
+                  setAutoForm((f) => ({ ...f, patente: normalizePatente(e.target.value).slice(0, 8) }))
+                }
                 fullWidth
-                inputProps={{ className: 'mono' }}
+                inputProps={{ className: 'mono', maxLength: 8 }}
+                helperText={patenteHelperText(autoForm.patente)}
               />
               <TextField
                 select

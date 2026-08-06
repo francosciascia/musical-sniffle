@@ -4,16 +4,19 @@ import FormaCells from './FormaCells'
 import {
   positionPlazas,
   combinedStageSize,
-  PLAZA_SIZE,
-  PLAZA_INSET,
-  PLAZA_FONT,
-  PLAZA_LABEL_Y,
+  makeGrid,
+  plazaMetrics,
+  GRID_COLS,
+  GRID_ROWS,
 } from '../utils/plazaLayout'
 import { colors, plazaFill, plazaStroke } from '../theme/colors'
 
 function plazaLabel(plaza) {
-  if (plaza.ocupada) {
-    return `${plaza.codigo}\n${plaza.patente || ''}`
+  if (plaza.patentes?.length > 1) {
+    return `${plaza.codigo}\n${plaza.patentes.join('\n')}`
+  }
+  if (plaza.ocupada || plaza.puedeOtraMoto) {
+    return `${plaza.codigo}\n${plaza.patente || plaza.patentes?.[0] || ''}`
   }
   if (plaza.reservada) {
     const abonado = plaza.reservaCliente?.split(' ')[0] || 'Abonado'
@@ -22,16 +25,26 @@ function plazaLabel(plaza) {
   return plaza.codigo
 }
 
-export default function ParkingMap({ plazas, piso, celdasForma, selectedId, onSelectPlaza }) {
-  const { width, height } = combinedStageSize(plazas, celdasForma)
-  const positioned = positionPlazas(plazas)
+export default function ParkingMap({
+  plazas,
+  piso,
+  celdasForma,
+  gridCols,
+  gridRows,
+  selectedId,
+  onSelectPlaza,
+}) {
+  const preferred = makeGrid(gridCols ?? GRID_COLS, gridRows ?? GRID_ROWS)
+  const { width, height, grid } = combinedStageSize(plazas, celdasForma, preferred)
+  const positioned = positionPlazas(plazas, grid)
+  const m = plazaMetrics(grid.cell)
 
   return (
     <Stage width={width} height={height}>
       <Layer>
         <Rect x={0} y={0} width={width} height={height} fill={colors.mapCanvas} listening={false} />
-        <FormaCells celdas={celdasForma} />
-        <GridLines />
+        <FormaCells celdas={celdasForma} grid={grid} />
+        <GridLines grid={grid} />
 
         {piso != null && (
           <Text
@@ -54,9 +67,9 @@ export default function ParkingMap({ plazas, piso, celdasForma, selectedId, onSe
               key={plaza.id}
               x={plaza.x}
               y={plaza.y}
-              width={PLAZA_SIZE - PLAZA_INSET}
-              height={PLAZA_SIZE - PLAZA_INSET}
-              cornerRadius={6}
+              width={m.size - m.inset}
+              height={m.size - m.inset}
+              cornerRadius={Math.max(2, Math.round(grid.cell * 0.12))}
               fill={plazaFill(plaza, selected)}
               stroke={plazaStroke(plaza, selected)}
               strokeWidth={selected ? 3 : 1.5}
@@ -71,11 +84,11 @@ export default function ParkingMap({ plazas, piso, celdasForma, selectedId, onSe
           <Text
             key={`label-${plaza.id}`}
             x={plaza.x}
-            y={plaza.y + PLAZA_LABEL_Y}
-            width={PLAZA_SIZE - PLAZA_INSET}
+            y={plaza.y + m.labelY}
+            width={m.size - m.inset}
             text={plazaLabel(plaza)}
             align="center"
-            fontSize={PLAZA_FONT}
+            fontSize={m.font}
             fill={colors.mapText}
             fontStyle="bold"
             listening={false}

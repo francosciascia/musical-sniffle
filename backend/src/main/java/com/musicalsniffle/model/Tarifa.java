@@ -41,6 +41,10 @@ public class Tarifa {
     @Column
     private Integer minutosParaMediaHora;
 
+    /** Abono mensual sugerido por tipo de vehículo (números redondos). */
+    @Column(name = "precio_mensual", precision = 10, scale = 2)
+    private BigDecimal precioMensual;
+
     @Column(nullable = false)
     private boolean activa;
 }

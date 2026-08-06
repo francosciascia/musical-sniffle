@@ -14,6 +14,7 @@ import {
 import { ArrowDownToLine, MapPin } from 'lucide-react'
 import api from '../api/client'
 import PlazaMapPickerDialog from './PlazaMapPickerDialog'
+import { isPatenteValida, normalizePatente, patenteHelperText } from '../utils/patente'
 
 const TIPOS = ['AUTO', 'CAMIONETA', 'MOTO', 'CAMION']
 
@@ -48,9 +49,9 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
     setLoading(true)
 
     try {
-      const patenteNorm = patente.trim().toUpperCase()
-      if (!patenteNorm) {
-        setError('Indicá la patente')
+      const patenteNorm = normalizePatente(patente)
+      if (!isPatenteValida(patenteNorm)) {
+        setError('Patente: mínimo 3 y máximo 8 caracteres (letras/números)')
         setLoading(false)
         return
       }
@@ -141,10 +142,11 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
             <TextField
               label="Patente"
               value={patente}
-              onChange={(e) => setPatente(e.target.value.toUpperCase())}
+              onChange={(e) => setPatente(normalizePatente(e.target.value).slice(0, 8))}
               required
               autoFocus
-              inputProps={{ className: 'mono' }}
+              inputProps={{ className: 'mono', maxLength: 8 }}
+              helperText={patenteHelperText(patente)}
             />
             <TextField
               label="Modelo"
@@ -183,8 +185,16 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
         onClose={() => setMapOpen(false)}
         selectedId={plazaElegida?.id}
         title="Elegir plaza para el ingreso"
-        hint="Tocá una plaza libre. Las ocupadas o reservadas no se usan para visitante."
-        filterPlaza={(p) => p.activa && !p.ocupada && !p.reservada}
+        hint={
+          tipo === 'MOTO'
+            ? 'Libre, o con una moto si está permitida la regla de 2 motos.'
+            : 'Tocá una plaza libre. Las ocupadas no se usan para auto/camioneta.'
+        }
+        filterPlaza={(p) => {
+          if (!p.activa || p.reservada) return false
+          if (!p.ocupada) return true
+          return tipo === 'MOTO' && !!p.puedeOtraMoto
+        }}
         onPick={(p) => setPlazaElegida(p)}
       />
     </>

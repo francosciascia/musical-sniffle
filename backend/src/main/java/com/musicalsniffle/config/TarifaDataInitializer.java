@@ -25,6 +25,7 @@ public class TarifaDataInitializer implements CommandLineRunner {
         tarifaRepository.save(Tarifa.builder()
                 .tipoVehiculo(TipoVehiculo.AUTO)
                 .precioPorHora(new BigDecimal("500"))
+                .precioMensual(new BigDecimal("45000"))
                 .activa(true)
                 .build());
 
@@ -32,6 +33,7 @@ public class TarifaDataInitializer implements CommandLineRunner {
                 .tipoVehiculo(TipoVehiculo.CAMIONETA)
                 .precioPorHora(new BigDecimal("700"))
                 .montoMinimo(new BigDecimal("800"))
+                .precioMensual(new BigDecimal("50000"))
                 .activa(true)
                 .build());
 
@@ -39,6 +41,7 @@ public class TarifaDataInitializer implements CommandLineRunner {
                 .tipoVehiculo(TipoVehiculo.MOTO)
                 .precioPorHora(new BigDecimal("300"))
                 .minutosParaMediaHora(30)
+                .precioMensual(new BigDecimal("30000"))
                 .activa(true)
                 .build());
 
@@ -46,6 +49,7 @@ public class TarifaDataInitializer implements CommandLineRunner {
                 .tipoVehiculo(TipoVehiculo.CAMION)
                 .precioPorHora(new BigDecimal("1200"))
                 .montoMinimo(new BigDecimal("2000"))
+                .precioMensual(new BigDecimal("80000"))
                 .activa(true)
                 .build());
     }

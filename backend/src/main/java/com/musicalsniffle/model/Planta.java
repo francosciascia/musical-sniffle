@@ -32,4 +32,12 @@ public class Planta {
     @Column(name = "celdas", nullable = false, columnDefinition = "TEXT")
     @Builder.Default
     private String celdasJson = "[]";
+
+    @Column(name = "grid_cols", nullable = false)
+    @Builder.Default
+    private int gridCols = 12;
+
+    @Column(name = "grid_rows", nullable = false)
+    @Builder.Default
+    private int gridRows = 8;
 }

@@ -17,6 +17,7 @@ import com.musicalsniffle.model.Plaza;
 import com.musicalsniffle.model.Reserva;
 import com.musicalsniffle.model.Ticket;
 import com.musicalsniffle.model.TipoEvento;
+import com.musicalsniffle.model.TipoVehiculo;
 import com.musicalsniffle.repository.AutoRepository;
 import com.musicalsniffle.repository.ClienteRepository;
 import com.musicalsniffle.repository.EstadiaRepository;
@@ -45,6 +46,7 @@ public class EstacionamientoService {
     private final TicketService ticketService;
     private final ClienteRepository clienteRepository;
     private final EstacionamientoProperties estacionamientoProperties;
+    private final AjustesEstacionamientoService ajustesService;
     private final TicketRepository ticketRepository;
 
     @Transactional(readOnly = true)
@@ -98,8 +100,17 @@ public class EstacionamientoService {
             if (piso != null && plaza.getPiso() != piso) {
                 continue;
             }
-            var estadiaAbierta = estadiaRepository.findByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA);
+            List<Estadia> abiertas = estadiaRepository.findAllByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA);
             var reservaPlaza = reservaService.buscarActivaPorPlaza(plaza.getId());
+
+            List<String> patentes = abiertas.stream()
+                    .map(e -> e.getAuto().getPatente())
+                    .toList();
+            boolean todasMotos = !abiertas.isEmpty()
+                    && abiertas.stream().allMatch(e -> e.getAuto().getTipo() == TipoVehiculo.MOTO);
+            int maxMotos = ajustesService.motosPorPlaza();
+            boolean puedeOtraMoto = todasMotos && abiertas.size() < maxMotos;
+            boolean ocupada = !abiertas.isEmpty() && !puedeOtraMoto;
 
             PlazaEstadoResponse.PlazaEstadoResponseBuilder builder = PlazaEstadoResponse.builder()
                     .id(plaza.getId())
@@ -108,11 +119,15 @@ public class EstacionamientoService {
                     .piso(plaza.getPiso())
                     .posX(plaza.getPosX())
                     .posY(plaza.getPosY())
-                    .ocupada(estadiaAbierta.isPresent())
+                    .ocupada(ocupada)
+                    .puedeOtraMoto(puedeOtraMoto)
+                    .vehiculos(abiertas.size())
+                    .patentes(patentes)
+                    .patente(patentes.isEmpty() ? null : patentes.get(0))
                     .reservada(reservaPlaza.isPresent());
-            estadiaAbierta.ifPresent(estadia -> builder
-                    .patente(estadia.getAuto().getPatente())
-                    .estadiaId(estadia.getId()));
+            if (!abiertas.isEmpty()) {
+                builder.estadiaId(abiertas.get(0).getId());
+            }
             reservaPlaza.ifPresent(reserva -> builder.reservaCliente(
                     reserva.getCliente().getNombre() + " " + reserva.getCliente().getApellido()));
             resultado.add(builder.build());
@@ -122,11 +137,12 @@ public class EstacionamientoService {
 
     @Transactional
     public Auto crearAuto(AutoRequest request, Persona operador) {
-        if (autoRepository.existsByPatenteIgnoreCase(request.getPatente())) {
-            throw new IllegalStateException("Ya existe un auto con patente: " + request.getPatente());
+        String patente = normalizarPatente(request.getPatente());
+        if (autoRepository.existsByPatenteIgnoreCase(patente)) {
+            throw new IllegalStateException("Ya existe un auto con patente: " + patente);
         }
         Auto auto = Auto.builder()
-                .patente(request.getPatente())
+                .patente(patente)
                 .tipo(request.getTipo())
                 .modelo(request.getModelo().trim())
                 .build();
@@ -145,12 +161,13 @@ public class EstacionamientoService {
 
     @Transactional
     public Auto registrarAutoCliente(AutoRequest request, Cliente cliente) {
-        if (autoRepository.existsByPatenteIgnoreCase(request.getPatente())) {
-            throw new IllegalStateException("Ya existe un auto con patente: " + request.getPatente());
+        String patente = normalizarPatente(request.getPatente());
+        if (autoRepository.existsByPatenteIgnoreCase(patente)) {
+            throw new IllegalStateException("Ya existe un auto con patente: " + patente);
         }
 
         Auto auto = Auto.builder()
-                .patente(request.getPatente().toUpperCase())
+                .patente(patente)
                 .tipo(request.getTipo())
                 .modelo(request.getModelo().trim())
                 .cliente(cliente)
@@ -167,7 +184,7 @@ public class EstacionamientoService {
         validarAutoSinEstadiaAbierta(auto);
         Optional<Reserva> reservaActiva = reservaService.buscarActivaPorAuto(autoId);
         Plaza plaza = resolverPlaza(plazaId, reservaActiva);
-        validarPlazaLibre(plaza);
+        validarPlazaLibre(plaza, auto);
         validarPlazaDisponibleParaAuto(plaza, reservaActiva);
 
         boolean abonado = reservaActiva.isPresent();
@@ -295,7 +312,7 @@ public class EstacionamientoService {
         }
 
         if (plazaId == null) {
-            if (estacionamientoProperties.isPlazaObligatoria()) {
+            if (ajustesService.isPlazaObligatoria() || estacionamientoProperties.isPlazaObligatoria()) {
                 throw new IllegalArgumentException("Debe indicar una plaza para visitantes");
             }
             return null;
@@ -305,15 +322,37 @@ public class EstacionamientoService {
                 .orElseThrow(() -> new IllegalArgumentException("Plaza no encontrada: " + plazaId));
     }
 
-    private void validarPlazaLibre(Plaza plaza) {
+    private void validarPlazaLibre(Plaza plaza, Auto auto) {
         if (plaza == null) {
             return;
         }
 
-        estadiaRepository.findByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA)
-                .ifPresent(e -> {
-                    throw new IllegalStateException("La plaza " + plaza.getCodigo() + " está ocupada");
-                });
+        List<Estadia> abiertas = estadiaRepository.findAllByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA);
+        if (abiertas.isEmpty()) {
+            return;
+        }
+
+        int maxMotos = ajustesService.motosPorPlaza();
+        boolean entranteEsMoto = auto.getTipo() == TipoVehiculo.MOTO;
+        boolean todasMotos = abiertas.stream().allMatch(e -> e.getAuto().getTipo() == TipoVehiculo.MOTO);
+
+        if (entranteEsMoto && todasMotos && abiertas.size() < maxMotos) {
+            return;
+        }
+
+        if (todasMotos && entranteEsMoto && abiertas.size() >= maxMotos) {
+            throw new IllegalStateException(
+                    "La plaza " + plaza.getCodigo() + " ya tiene " + abiertas.size()
+                            + (maxMotos > 1 ? " motos (máximo " + maxMotos + ")" : " moto"));
+        }
+
+        if (todasMotos && !entranteEsMoto) {
+            throw new IllegalStateException(
+                    "La plaza " + plaza.getCodigo() + " tiene moto(s); solo admite otra moto"
+                            + (maxMotos > 1 ? " (máx. " + maxMotos + ")" : ""));
+        }
+
+        throw new IllegalStateException("La plaza " + plaza.getCodigo() + " está ocupada");
     }
 
     private void validarPlazaDisponibleParaAuto(Plaza plaza, Optional<Reserva> reservaAuto) {
@@ -340,5 +379,17 @@ public class EstacionamientoService {
                     throw new IllegalStateException(
                             "El auto " + auto.getPatente() + " ya tiene una estadía abierta (#" + e.getId() + ")");
                 });
+    }
+
+    /** Letras/números, mayúsculas; min 3 max 8 (validado también en AutoRequest). */
+    public static String normalizarPatente(String raw) {
+        if (raw == null) {
+            throw new IllegalArgumentException("Indicá la patente");
+        }
+        String patente = raw.trim().toUpperCase().replaceAll("[^A-Z0-9]", "");
+        if (patente.length() < 3 || patente.length() > 8) {
+            throw new IllegalArgumentException("La patente debe tener entre 3 y 8 caracteres (letras o números)");
+        }
+        return patente;
     }
 }

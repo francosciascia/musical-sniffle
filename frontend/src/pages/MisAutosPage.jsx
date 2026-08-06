@@ -16,6 +16,7 @@ import {
 } from '@mui/material'
 import AppLayout from '../components/AppLayout'
 import api from '../api/client'
+import { isPatenteValida, normalizePatente, patenteHelperText } from '../utils/patente'
 
 const TIPOS = ['AUTO', 'CAMIONETA', 'MOTO', 'CAMION']
 
@@ -45,10 +46,15 @@ export default function MisAutosPage() {
     event.preventDefault()
     setError('')
     setOk('')
+    const patenteNorm = normalizePatente(patente)
+    if (!isPatenteValida(patenteNorm)) {
+      setError('Patente: mínimo 3 y máximo 8 caracteres (letras/números)')
+      return
+    }
     setLoading(true)
     try {
       await api.post('/cliente/autos', {
-        patente: patente.trim().toUpperCase(),
+        patente: patenteNorm,
         tipo,
         modelo: modelo.trim(),
       })
@@ -80,9 +86,11 @@ export default function MisAutosPage() {
           <TextField
             label="Patente"
             value={patente}
-            onChange={(e) => setPatente(e.target.value.toUpperCase())}
+            onChange={(e) => setPatente(normalizePatente(e.target.value).slice(0, 8))}
             required
             size="small"
+            inputProps={{ className: 'mono', maxLength: 8 }}
+            helperText={patenteHelperText(patente)}
           />
           <TextField
             label="Modelo"

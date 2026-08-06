@@ -17,6 +17,8 @@ export const colors = {
   libre: '#1B7A3A',
   reservada: '#E68A00',
   ocupada: '#C62828',
+  /** Una moto y cabe otra (si la regla está activa). */
+  parcialMoto: '#EF6C00',
   fueraServicio: '#8A8A8A',
 
   mapCanvas: '#FAF9F6',
@@ -32,6 +34,7 @@ export const colors = {
 export function plazaFill(plaza, selected = false) {
   if (!plaza.activa) return colors.fueraServicio
   if (plaza.ocupada) return colors.ocupada
+  if (plaza.puedeOtraMoto) return colors.parcialMoto
   if (plaza.reservada) return colors.reservada
   if (selected) return colors.primaryLight
   return colors.libre
@@ -40,14 +43,16 @@ export function plazaFill(plaza, selected = false) {
 export function plazaStroke(plaza, selected = false) {
   if (selected) return colors.accent
   if (!plaza.activa) return colors.cement
-  if (plaza.reservada) return '#B86E00'
   if (plaza.ocupada) return '#8E1B1B'
+  if (plaza.puedeOtraMoto) return '#BF360C'
+  if (plaza.reservada) return '#B86E00'
   return colors.primaryDark
 }
 
 export const LEYENDA_PLAZAS = [
   { color: colors.libre, label: 'Libre' },
   { color: colors.reservada, label: 'Reservada' },
+  { color: colors.parcialMoto, label: '1 moto (cabe otra)' },
   { color: colors.ocupada, label: 'Ocupada' },
   { color: colors.fueraServicio, label: 'Fuera de servicio' },
 ]

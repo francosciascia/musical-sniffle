@@ -1,15 +1,17 @@
 import { useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Box, Button, Stack, Tab, Tabs, Typography } from '@mui/material'
-import { LayoutGrid, Receipt } from 'lucide-react'
+import { LayoutGrid, Receipt, SlidersHorizontal } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import TarifasPanel from '../components/TarifasPanel'
 import OperadoresPanel from '../components/OperadoresPanel'
+import ReglasPanel from '../components/ReglasPanel'
 import { colors } from '../theme/colors'
 
 const TABS = [
   { id: 'diseno', label: 'Diseño' },
   { id: 'tarifas', label: 'Tarifas' },
+  { id: 'reglas', label: 'Reglas' },
   { id: 'operadores', label: 'Operadores' },
 ]
 
@@ -31,7 +33,7 @@ export default function ConfigPage() {
         Configuración
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Diseño, tarifas y operadores.
+        Diseño, tarifas, reglas y operadores.
       </Typography>
 
       <Tabs
@@ -49,7 +51,7 @@ export default function ConfigPage() {
       {tab === 'diseno' && (
         <Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Editá la forma de cada piso, creá o borrá plazas y organizá el plano que ven operadores.
+            Dibujá la estructura del piso (pasillos, entradas, área) y después los lugares.
           </Typography>
           <Box
             sx={{
@@ -65,7 +67,7 @@ export default function ConfigPage() {
               <Box>
                 <Typography sx={{ fontWeight: 700 }}>Editor de planta</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Pintá contorno, creá plazas en lote y activá o desactivá celdas.
+                  Estructura del estacionamiento + plazas por piso.
                 </Typography>
               </Box>
             </Stack>
@@ -89,6 +91,16 @@ export default function ConfigPage() {
             <Typography sx={{ fontWeight: 700 }}>Tarifas</Typography>
           </Stack>
           <TarifasPanel />
+        </Box>
+      )}
+
+      {tab === 'reglas' && (
+        <Box>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+            <SlidersHorizontal size={18} color={colors.primary} />
+            <Typography sx={{ fontWeight: 700 }}>Reglas de negocio</Typography>
+          </Stack>
+          <ReglasPanel />
         </Box>
       )}
 

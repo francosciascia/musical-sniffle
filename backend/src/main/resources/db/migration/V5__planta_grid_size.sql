@@ -1,0 +1,7 @@
+ALTER TABLE plantas
+    ADD COLUMN IF NOT EXISTS grid_cols INTEGER NOT NULL DEFAULT 12,
+    ADD COLUMN IF NOT EXISTS grid_rows INTEGER NOT NULL DEFAULT 8;
+
+ALTER TABLE plantas
+    ADD CONSTRAINT plantas_grid_cols_chk CHECK (grid_cols BETWEEN 4 AND 80),
+    ADD CONSTRAINT plantas_grid_rows_chk CHECK (grid_rows BETWEEN 4 AND 50);

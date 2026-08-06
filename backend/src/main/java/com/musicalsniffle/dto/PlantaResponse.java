@@ -9,5 +9,7 @@ import lombok.Getter;
 public class PlantaResponse {
 
     private int piso;
+    private int gridCols;
+    private int gridRows;
     private List<CeldaPlantaDto> celdas;
 }

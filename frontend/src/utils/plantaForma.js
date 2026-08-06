@@ -1,13 +1,27 @@
-/** Tipos de celda al dibujar la forma del edificio. */
+/** Tipos de celda al dibujar la estructura del estacionamiento. */
 export const TIPO_CELDA = {
   FORMA: 'FORMA',
+  CIRCULACION: 'CIRCULACION',
+  ENTRADA: 'ENTRADA',
+  SALIDA: 'SALIDA',
   OBSTACULO: 'OBSTACULO',
 }
 
 export const COLORES_CELDA = {
-  FORMA: '#D4D1CA',
-  OBSTACULO: '#6E6E6E',
+  FORMA: '#C8D5C0', // área de estacionar (verde cemento suave)
+  CIRCULACION: '#B8B4A8', // pasillo / calle
+  ENTRADA: '#2E7D32', // ingreso
+  SALIDA: '#C62828', // egreso
+  OBSTACULO: '#5A5A5A', // columna / pared
 }
+
+export const LEYENDA_ESTRUCTURA = [
+  { tipo: TIPO_CELDA.FORMA, label: 'Área de plazas', color: COLORES_CELDA.FORMA },
+  { tipo: TIPO_CELDA.CIRCULACION, label: 'Pasillo / calle', color: COLORES_CELDA.CIRCULACION },
+  { tipo: TIPO_CELDA.ENTRADA, label: 'Entrada', color: COLORES_CELDA.ENTRADA },
+  { tipo: TIPO_CELDA.SALIDA, label: 'Salida', color: COLORES_CELDA.SALIDA },
+  { tipo: TIPO_CELDA.OBSTACULO, label: 'Obstáculo', color: COLORES_CELDA.OBSTACULO },
+]
 
 export function cellMapFromCeldas(celdas) {
   const map = new Map()
@@ -37,12 +51,10 @@ export function applyPaint(celdas, cells, herramienta) {
   return celdasFromMap(map)
 }
 
-/** Solo se pueden poner plazas si el piso está guardado y (opcional) sobre contorno FORMA. */
+/** Plazas solo sobre celdas FORMA (Área de plazas). Sin área dibujada → no se puede. */
 export function celdaPermitePlaza(celdas, col, row, pisoGuardado = true) {
   if (!pisoGuardado) return false
-  if (!celdas?.length) return true
-  const hayContorno = celdas.some((c) => c.tipo === TIPO_CELDA.FORMA)
-  if (!hayContorno) return true
+  if (!celdas?.length) return false
   return celdas.some((c) => c.col === col && c.row === row && c.tipo === TIPO_CELDA.FORMA)
 }
 

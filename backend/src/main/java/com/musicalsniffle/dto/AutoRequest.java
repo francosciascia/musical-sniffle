@@ -10,6 +10,7 @@ import lombok.Setter;
 @Setter
 public class AutoRequest {
 
+    /** Se normaliza en servicio: 3–8 letras/números (ej. 123, ASD123, AA123BB). */
     @NotBlank
     private String patente;
 

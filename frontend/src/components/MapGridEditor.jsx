@@ -3,19 +3,13 @@ import { Stage, Layer, Rect, Text } from 'react-konva'
 import GridLines from './GridLines'
 import FormaCells from './FormaCells'
 import {
-  GRID_CELL,
-  GRID_COLS,
-  GRID_PAD,
-  GRID_ROWS,
-  PLAZA_SIZE,
-  PLAZA_INSET,
-  PLAZA_FONT,
-  PLAZA_LABEL_Y,
+  makeGrid,
   editorStageSize,
   snapToGrid,
   cellFromPointer,
   cellsInRect,
   cellKey,
+  plazaMetrics,
 } from '../utils/plazaLayout'
 import { celdaPermitePlaza } from '../utils/plantaForma'
 import { colors } from '../theme/colors'
@@ -26,7 +20,7 @@ export const HERRAMIENTA_PLAZAS = {
   BORRAR: 'BORRAR',
 }
 
-function SelectionRect({ start, end, mode, herramientaPlazas }) {
+function SelectionRect({ start, end, mode, herramientaPlazas, grid }) {
   if (!start || !end) return null
 
   const colMin = Math.min(start.col, end.col)
@@ -49,10 +43,10 @@ function SelectionRect({ start, end, mode, herramientaPlazas }) {
 
   return (
     <Rect
-      x={GRID_PAD + colMin * GRID_CELL}
-      y={GRID_PAD + rowMin * GRID_CELL}
-      width={(colMax - colMin + 1) * GRID_CELL}
-      height={(rowMax - rowMin + 1) * GRID_CELL}
+      x={grid.pad + colMin * grid.cell}
+      y={grid.pad + rowMin * grid.cell}
+      width={(colMax - colMin + 1) * grid.cell}
+      height={(rowMax - rowMin + 1) * grid.cell}
       fill={fill}
       stroke={stroke}
       strokeWidth={2}
@@ -69,18 +63,20 @@ function DraggablePlaza({
   onSelect,
   selected,
   draggable,
+  grid,
 }) {
-  const x = GRID_PAD + (plaza.posX ?? 0) * GRID_CELL
-  const y = GRID_PAD + (plaza.posY ?? 0) * GRID_CELL
+  const m = plazaMetrics(grid.cell)
+  const x = grid.pad + (plaza.posX ?? 0) * grid.cell
+  const y = grid.pad + (plaza.posY ?? 0) * grid.cell
 
   return (
     <>
       <Rect
         x={x}
         y={y}
-        width={PLAZA_SIZE - PLAZA_INSET}
-        height={PLAZA_SIZE - PLAZA_INSET}
-        cornerRadius={6}
+        width={m.size - m.inset}
+        height={m.size - m.inset}
+        cornerRadius={Math.max(2, Math.round(grid.cell * 0.12))}
         fill={plaza.activa ? colors.primary : colors.fueraServicio}
         stroke={selected ? colors.accent : colors.primaryDark}
         strokeWidth={selected ? 3 : 2}
@@ -99,7 +95,7 @@ function DraggablePlaza({
         }}
         onDragEnd={(e) => {
           const node = e.target
-          const snapped = snapToGrid(node.x(), node.y())
+          const snapped = snapToGrid(node.x(), node.y(), grid)
           if (!celdaPermitePlaza(celdasForma, snapped.col, snapped.row, true)) {
             node.position({ x, y })
             return
@@ -110,11 +106,11 @@ function DraggablePlaza({
       />
       <Text
         x={x}
-        y={y + PLAZA_LABEL_Y}
-        width={PLAZA_SIZE - PLAZA_INSET}
+        y={y + m.labelY}
+        width={m.size - m.inset}
         text={plaza.codigo}
         align="center"
-        fontSize={PLAZA_FONT + 1}
+        fontSize={m.font}
         fill={colors.mapText}
         fontStyle="bold"
         listening={false}
@@ -130,6 +126,7 @@ export default function MapGridEditor({
   celdasForma,
   plazas,
   piso,
+  grid: gridProp,
   onFormaPaint,
   onCellsSelect,
   onPlazaMove,
@@ -137,14 +134,19 @@ export default function MapGridEditor({
   onSelectPlaza,
   onSelectPlazas,
   onDeletePlazas,
+  onInvalidPlazaCells,
   pisoGuardado = true,
 }) {
+  const grid = gridProp || makeGrid()
+  const gridRef = useRef(grid)
+  gridRef.current = grid
+
   const selectingRef = useRef(false)
   const selStartRef = useRef(null)
   const selEndRef = useRef(null)
   const [selStart, setSelStart] = useState(null)
   const [selEnd, setSelEnd] = useState(null)
-  const { width, height } = editorStageSize()
+  const { width, height } = editorStageSize(grid)
 
   const plazasPiso = plazas.filter((p) => p.piso === piso)
   const selectedSet = new Set(selectedIds)
@@ -191,7 +193,6 @@ export default function MapGridEditor({
       return
     }
 
-    // CREAR: solo celdas vacías permitidas
     const libres = allCells.filter(
       (c) =>
         pisoGuardado &&
@@ -201,6 +202,8 @@ export default function MapGridEditor({
 
     if (libres.length > 0) {
       onCellsSelect(libres)
+    } else if (allCells.length > 0) {
+      onInvalidPlazaCells?.()
     }
   }
 
@@ -209,7 +212,7 @@ export default function MapGridEditor({
     const pointer = stage.getPointerPosition()
     if (!pointer) return
 
-    const cell = cellFromPointer(pointer.x, pointer.y)
+    const cell = cellFromPointer(pointer.x, pointer.y, gridRef.current)
     selectingRef.current = true
     selStartRef.current = cell
     setSelStart(cell)
@@ -224,7 +227,7 @@ export default function MapGridEditor({
     const pointer = stage.getPointerPosition()
     if (!pointer) return
 
-    const cell = cellFromPointer(pointer.x, pointer.y)
+    const cell = cellFromPointer(pointer.x, pointer.y, gridRef.current)
     setSelEnd(cell)
     selEndRef.current = cell
   }
@@ -237,7 +240,8 @@ export default function MapGridEditor({
 
     window.addEventListener('mouseup', handleWindowMouseUp)
     return () => window.removeEventListener('mouseup', handleWindowMouseUp)
-  })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- listener estable; finishSelection usa refs
+  }, [])
 
   function handleSelectEnd() {
     if (!selectingRef.current || !selStartRef.current) return
@@ -254,12 +258,12 @@ export default function MapGridEditor({
 
   const titulo =
     mode === 'forma'
-      ? `PISO ${piso} — dibujar forma`
+      ? `PISO ${piso} — dibujar estructura · ${grid.cols}×${grid.rows}`
       : herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR
-        ? `PISO ${piso} — borrar plazas`
+        ? `PISO ${piso} — borrar plazas · ${grid.cols}×${grid.rows}`
         : herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR
-          ? `PISO ${piso} — seleccionar`
-          : `PISO ${piso} — colocar plazas`
+          ? `PISO ${piso} — seleccionar · ${grid.cols}×${grid.rows}`
+          : `PISO ${piso} — colocar plazas · ${grid.cols}×${grid.rows}`
 
   const allowDrag = herramientaPlazas === HERRAMIENTA_PLAZAS.CREAR
 
@@ -274,8 +278,8 @@ export default function MapGridEditor({
     >
       <Layer>
         <Rect x={0} y={0} width={width} height={height} fill={colors.mapCanvas} listening={false} />
-        <FormaCells celdas={celdasForma} />
-        <GridLines />
+        <FormaCells celdas={celdasForma} grid={grid} />
+        <GridLines grid={grid} />
         <Text
           x={12}
           y={8}
@@ -286,10 +290,10 @@ export default function MapGridEditor({
           listening={false}
         />
         <Rect
-          x={GRID_PAD}
-          y={GRID_PAD}
-          width={GRID_COLS * GRID_CELL}
-          height={GRID_ROWS * GRID_CELL}
+          x={grid.pad}
+          y={grid.pad}
+          width={grid.cols * grid.cell}
+          height={grid.rows * grid.cell}
           fill="transparent"
           onMouseDown={handleSelectStart}
           onTouchStart={handleSelectStart}
@@ -299,6 +303,7 @@ export default function MapGridEditor({
           end={selEnd}
           mode={mode}
           herramientaPlazas={herramientaPlazas}
+          grid={grid}
         />
         {mode === 'plazas' &&
           plazasPiso.map((plaza) => (
@@ -308,6 +313,7 @@ export default function MapGridEditor({
               celdasForma={celdasForma}
               selected={selectedSet.has(plaza.id)}
               draggable={allowDrag}
+              grid={grid}
               onSelect={handlePlazaClick}
               onDragEnd={onPlazaMove}
             />

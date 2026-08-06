@@ -20,6 +20,11 @@ import {
 } from '@mui/material'
 import api from '../api/client'
 
+function formatMoney(n) {
+  if (n == null || n === '') return '—'
+  return `$${Number(n).toLocaleString('es-AR')}`
+}
+
 /** Panel de tarifas reutilizable (Configuración / página legacy). */
 export default function TarifasPanel() {
   const [tarifas, setTarifas] = useState([])
@@ -47,6 +52,7 @@ export default function TarifasPanel() {
       precioPorHora: tarifa.precioPorHora,
       montoMinimo: tarifa.montoMinimo ?? '',
       minutosParaMediaHora: tarifa.minutosParaMediaHora ?? '',
+      precioMensual: tarifa.precioMensual ?? '',
       activa: tarifa.activa,
     })
   }
@@ -59,6 +65,7 @@ export default function TarifasPanel() {
         precioPorHora: Number(form.precioPorHora),
         montoMinimo: form.montoMinimo ? Number(form.montoMinimo) : null,
         minutosParaMediaHora: form.minutosParaMediaHora ? Number(form.minutosParaMediaHora) : null,
+        precioMensual: form.precioMensual ? Number(form.precioMensual) : null,
         activa: form.activa,
       })
       setEditando(null)
@@ -73,7 +80,8 @@ export default function TarifasPanel() {
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Precios por tipo de vehículo. Se usan al calcular el egreso.
+        Precios por hora (egreso) y abono mensual sugerido por tipo de vehículo. Usá montos redondos
+        (ej. 45.000, 50.000).
       </Typography>
 
       {error && (
@@ -83,13 +91,14 @@ export default function TarifasPanel() {
       )}
 
       <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 520 }}>
+        <Table size="small" sx={{ minWidth: 620 }}>
           <TableHead>
             <TableRow>
               <TableCell>Tipo</TableCell>
               <TableCell>$/hora</TableCell>
               <TableCell>Mínimo</TableCell>
               <TableCell>Min. media hora</TableCell>
+              <TableCell>$/mes</TableCell>
               <TableCell>Activa</TableCell>
               <TableCell align="right">Acción</TableCell>
             </TableRow>
@@ -98,9 +107,10 @@ export default function TarifasPanel() {
             {tarifas.map((t) => (
               <TableRow key={t.id}>
                 <TableCell>{t.tipoVehiculo}</TableCell>
-                <TableCell>${t.precioPorHora}</TableCell>
-                <TableCell>{t.montoMinimo != null ? `$${t.montoMinimo}` : '—'}</TableCell>
+                <TableCell>{formatMoney(t.precioPorHora)}</TableCell>
+                <TableCell>{formatMoney(t.montoMinimo)}</TableCell>
                 <TableCell>{t.minutosParaMediaHora ?? '—'}</TableCell>
+                <TableCell>{formatMoney(t.precioMensual)}</TableCell>
                 <TableCell>{t.activa ? 'Sí' : 'No'}</TableCell>
                 <TableCell align="right">
                   <Button size="small" onClick={() => abrirEditar(t)}>
@@ -115,13 +125,14 @@ export default function TarifasPanel() {
 
       <Dialog open={!!editando} onClose={() => setEditando(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Editar tarifa — {editando?.tipoVehiculo}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2.5 }}>
           <TextField
             label="Precio por hora"
             type="number"
             value={form.precioPorHora}
             onChange={(e) => setForm({ ...form, precioPorHora: e.target.value })}
             fullWidth
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Monto mínimo (opcional)"
@@ -129,6 +140,7 @@ export default function TarifasPanel() {
             value={form.montoMinimo}
             onChange={(e) => setForm({ ...form, montoMinimo: e.target.value })}
             fullWidth
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Minutos para media hora (opcional)"
@@ -136,6 +148,16 @@ export default function TarifasPanel() {
             value={form.minutosParaMediaHora}
             onChange={(e) => setForm({ ...form, minutosParaMediaHora: e.target.value })}
             fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Abono mensual (sugerido)"
+            type="number"
+            value={form.precioMensual}
+            onChange={(e) => setForm({ ...form, precioMensual: e.target.value })}
+            fullWidth
+            helperText="Ej: 45000, 50000 (redondo)"
+            InputLabelProps={{ shrink: true }}
           />
           <FormControlLabel
             control={

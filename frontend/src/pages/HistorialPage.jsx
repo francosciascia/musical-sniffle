@@ -16,7 +16,9 @@ import {
 } from '@mui/material'
 import { Download } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
+import TablePager from '../components/TablePager'
 import api from '../api/client'
+import { usePagedRows } from '../hooks/usePagedRows'
 import { getRol, isAdmin } from '../utils/auth'
 import { downloadCsv } from '../utils/exportCsv'
 import { labelMedioPago } from '../utils/mediosPago'
@@ -29,6 +31,9 @@ export default function HistorialPage() {
   const [error, setError] = useState('')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
+  const { page, rowsPerPage, setPage, setRowsPerPage, paged, count } = usePagedRows(eventos, {
+    resetKey: `${desde}|${hasta}`,
+  })
 
   const cargar = useCallback(async () => {
     setError('')
@@ -167,14 +172,14 @@ export default function HistorialPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {eventos.length === 0 && (
+            {count === 0 && (
               <TableRow>
                 <TableCell colSpan={6} align="center">
                   Sin eventos en el período
                 </TableCell>
               </TableRow>
             )}
-            {eventos.map((e) => (
+            {paged.map((e) => (
               <TableRow key={e.id}>
                 <TableCell>{e.fechaHora?.replace('T', ' ').slice(0, 16)}</TableCell>
                 <TableCell>{e.tipoEvento}</TableCell>
@@ -186,6 +191,13 @@ export default function HistorialPage() {
             ))}
           </TableBody>
         </Table>
+        <TablePager
+          count={count}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={setRowsPerPage}
+        />
       </TableContainer>
     </AppLayout>
   )

@@ -19,5 +19,8 @@ public class TarifaRequest {
 
     private Integer minutosParaMediaHora;
 
+    @DecimalMin("0.01")
+    private BigDecimal precioMensual;
+
     private boolean activa = true;
 }

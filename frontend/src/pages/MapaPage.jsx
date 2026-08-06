@@ -62,6 +62,11 @@ export default function MapaPage() {
     [plantas, pisoActual],
   )
 
+  const plantaActual = useMemo(
+    () => plantas.find((p) => p.piso === pisoActual),
+    [plantas, pisoActual],
+  )
+
   const plazas = useMemo(
     () => todasPlazas.filter((p) => (p.piso || 1) === pisoActual),
     [todasPlazas, pisoActual],
@@ -187,6 +192,8 @@ export default function MapaPage() {
                 plazas={plazas}
                 piso={pisoActual}
                 celdasForma={celdasForma}
+                gridCols={plantaActual?.gridCols}
+                gridRows={plantaActual?.gridRows}
                 selectedId={selectedPlaza?.id}
                 onSelectPlaza={handleSelectPlaza}
               />

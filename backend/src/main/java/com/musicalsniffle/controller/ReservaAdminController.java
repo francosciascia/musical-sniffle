@@ -8,6 +8,7 @@ import com.musicalsniffle.model.EstadoEstadia;
 import com.musicalsniffle.model.Plaza;
 import com.musicalsniffle.repository.EstadiaRepository;
 import com.musicalsniffle.repository.PlazaRepository;
+import com.musicalsniffle.repository.ReservaRepository;
 import com.musicalsniffle.security.UserPrincipal;
 import com.musicalsniffle.service.PlantaService;
 import com.musicalsniffle.service.ReservaService;
@@ -16,6 +17,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +36,7 @@ public class ReservaAdminController {
     private final ReservaService reservaService;
     private final PlazaRepository plazaRepository;
     private final EstadiaRepository estadiaRepository;
+    private final ReservaRepository reservaRepository;
     private final PlantaService plantaService;
 
     @GetMapping("/plazas")
@@ -85,6 +88,7 @@ public class ReservaAdminController {
 
     @DeleteMapping("/plazas/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
     public void eliminarPlaza(@PathVariable Long id) {
         Plaza plaza = plazaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Plaza no encontrada: " + id));
@@ -94,11 +98,13 @@ public class ReservaAdminController {
                     throw new IllegalStateException("No se puede eliminar: la plaza está ocupada");
                 });
 
-        reservaService.buscarActivaPorPlaza(id)
-                .ifPresent(r -> {
-                    throw new IllegalStateException("No se puede eliminar: la plaza tiene reserva activa");
-                });
+        if (reservaRepository.existsByPlazaId(id)) {
+            throw new IllegalStateException(
+                    "No se puede eliminar: la plaza tiene reservas asociadas (activas o históricas)");
+        }
 
+        // Estadías cerradas siguen apuntando a la plaza; desvincular antes de borrar
+        estadiaRepository.clearPlazaReference(id);
         plazaRepository.delete(plaza);
     }
 
@@ -167,7 +173,7 @@ public class ReservaAdminController {
         }
         if (!plantaService.celdaPermitePlaza(piso, posX, posY)) {
             throw new IllegalStateException(
-                    "Esa celda no está dentro del contorno del piso. Dibujá el área o elegí otra celda.");
+                    "Solo se pueden poner lugares sobre el Área de plazas. Dibujá esa área en Estructura o elegí otra celda.");
         }
     }
 }

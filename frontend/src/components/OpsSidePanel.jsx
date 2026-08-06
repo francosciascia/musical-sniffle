@@ -83,7 +83,9 @@ export default function OpsSidePanel({
     }
   }
 
-  const puedeIngresar = !selectedPlaza || (selectedPlaza.activa && !selectedPlaza.ocupada)
+  const puedeIngresar =
+    !selectedPlaza ||
+    (selectedPlaza.activa && (!selectedPlaza.ocupada || selectedPlaza.puedeOtraMoto))
 
   return (
     <Box
@@ -259,6 +261,12 @@ export default function OpsSidePanel({
           Registrar ingreso
         </Button>
 
+        {selectedPlaza?.ocupada && selectedPlaza?.patentes?.length > 1 && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            Varias motos: {selectedPlaza.patentes.join(', ')}. Buscá por patente para egresar.
+          </Typography>
+        )}
+
         {selectedPlaza?.ocupada && (
           <Button
             fullWidth
@@ -285,7 +293,7 @@ export default function OpsSidePanel({
               }
             }}
           >
-            Egreso de esta plaza
+            Egreso {selectedPlaza.patentes?.length > 1 ? `(${selectedPlaza.patente})` : 'de esta plaza'}
           </Button>
         )}
 

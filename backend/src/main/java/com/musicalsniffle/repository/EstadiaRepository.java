@@ -8,12 +8,20 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface EstadiaRepository extends JpaRepository<Estadia, Long> {
 
     Optional<Estadia> findByPlazaAndEstado(Plaza plaza, EstadoEstadia estado);
+
+    List<Estadia> findAllByPlazaAndEstado(Plaza plaza, EstadoEstadia estado);
+
+    /** Desvincula estadías cerradas/históricas para poder borrar la plaza. */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Estadia e SET e.plaza = null WHERE e.plaza.id = :plazaId")
+    int clearPlazaReference(@Param("plazaId") Long plazaId);
 
     Optional<Estadia> findByAutoAndEstado(Auto auto, EstadoEstadia estado);
 

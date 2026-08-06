@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Idempotente: si ya están bien, no toca nada.
  */
 @Component
-@Order(4)
+@Order(5)
 @RequiredArgsConstructor
 @Slf4j
 public class PlazaCodigoNormalizer implements CommandLineRunner {

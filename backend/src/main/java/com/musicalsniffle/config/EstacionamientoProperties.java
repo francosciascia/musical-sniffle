@@ -13,7 +13,7 @@ public class EstacionamientoProperties {
 
     /**
      * Si es true, el operador debe indicar plaza al registrar ingresos de visitantes.
-     * Si es false, la plaza es opcional (estacionamientos que no llevan control por lugar).
+     * Preferí el ajuste en Configuración (DB); esto queda como default de arranque.
      */
     private boolean plazaObligatoria = false;
 }

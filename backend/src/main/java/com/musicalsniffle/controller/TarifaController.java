@@ -47,13 +47,19 @@ public class TarifaController {
         tarifa.setPrecioPorHora(request.getPrecioPorHora());
         tarifa.setMontoMinimo(request.getMontoMinimo());
         tarifa.setMinutosParaMediaHora(request.getMinutosParaMediaHora());
+        tarifa.setPrecioMensual(request.getPrecioMensual());
         tarifa.setActiva(request.isActiva());
 
         Tarifa guardada = tarifaRepository.save(tarifa);
 
         historialService.registrar(
                 TipoEvento.TARIFA_ACTUALIZADA,
-                "Tarifa " + guardada.getTipoVehiculo() + " actualizada a $" + guardada.getPrecioPorHora() + "/h",
+                "Tarifa " + guardada.getTipoVehiculo() + " actualizada"
+                        + " ($" + guardada.getPrecioPorHora() + "/h"
+                        + (guardada.getPrecioMensual() != null
+                                ? ", $" + guardada.getPrecioMensual() + "/mes"
+                                : "")
+                        + ")",
                 user.getPersona(),
                 "Tarifa",
                 guardada.getId(),

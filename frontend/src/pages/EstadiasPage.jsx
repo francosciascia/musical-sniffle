@@ -16,7 +16,9 @@ import {
 import { ArrowUpFromLine, Search } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import EgresoDialog from '../components/EgresoDialog'
+import TablePager from '../components/TablePager'
 import api from '../api/client'
+import { usePagedRows } from '../hooks/usePagedRows'
 import { colors } from '../theme/colors'
 
 export default function EstadiasPage() {
@@ -27,6 +29,7 @@ export default function EstadiasPage() {
   const [tipoBusqueda, setTipoBusqueda] = useState('patente')
   const [resultado, setResultado] = useState(null)
   const [egresoTarget, setEgresoTarget] = useState(null)
+  const { page, rowsPerPage, setPage, setRowsPerPage, paged, count } = usePagedRows(estadias)
 
   const cargar = useCallback(async () => {
     setError('')
@@ -162,14 +165,15 @@ export default function EstadiasPage() {
                 </TableCell>
               </TableRow>
             )}
-            {!loading && estadias.length === 0 && (
+            {!loading && count === 0 && (
               <TableRow>
                 <TableCell colSpan={5} align="center">
                   No hay vehículos estacionados
                 </TableCell>
               </TableRow>
             )}
-            {estadias.map((e) => (
+            {!loading &&
+              paged.map((e) => (
               <TableRow key={e.id} hover>
                 <TableCell>
                   <span className="mono">{e.patente}</span>
@@ -194,6 +198,13 @@ export default function EstadiasPage() {
             ))}
           </TableBody>
         </Table>
+        <TablePager
+          count={count}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={setRowsPerPage}
+        />
       </Box>
 
       <EgresoDialog

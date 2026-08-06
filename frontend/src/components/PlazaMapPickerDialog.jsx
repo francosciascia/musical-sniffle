@@ -81,6 +81,7 @@ export default function PlazaMapPickerDialog({
   )
 
   const celdasForma = useMemo(() => celdasDelPiso(plantas, piso), [plantas, piso])
+  const plantaActual = useMemo(() => plantas.find((p) => p.piso === piso), [plantas, piso])
 
   const preview = useMemo(
     () => todasPlazas.find((p) => p.id === previewId) || null,
@@ -160,6 +161,8 @@ export default function PlazaMapPickerDialog({
               plazas={plazasPiso}
               piso={piso}
               celdasForma={celdasForma}
+              gridCols={plantaActual?.gridCols}
+              gridRows={plantaActual?.gridRows}
               selectedId={previewId}
               onSelectPlaza={handleSelect}
             />
