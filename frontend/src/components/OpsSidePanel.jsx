@@ -78,9 +78,11 @@ export default function OpsSidePanel({
     }
   }
 
+  const esPlazaAbonado = !!(selectedPlaza?.reservada && !selectedPlaza?.ocupada)
   const puedeIngresar =
-    !selectedPlaza ||
-    (selectedPlaza.activa && (!selectedPlaza.ocupada || selectedPlaza.puedeOtraMoto))
+    !esPlazaAbonado &&
+    (!selectedPlaza ||
+      (selectedPlaza.activa && (!selectedPlaza.ocupada || selectedPlaza.puedeOtraMoto)))
 
   const estadoColor = selectedPlaza ? plazaFill(selectedPlaza) : null
 
@@ -159,6 +161,7 @@ export default function OpsSidePanel({
             {selectedPlaza.reservada && (
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.35 }}>
                 Abonado{selectedPlaza.reservaCliente ? `: ${selectedPlaza.reservaCliente}` : ''}
+                {!selectedPlaza.ocupada ? ' · Sin ticket: estaciona en su lugar' : ''}
               </Typography>
             )}
             {selectedPlaza.patente && (
@@ -174,17 +177,23 @@ export default function OpsSidePanel({
         )}
 
         <Stack spacing={1}>
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            disabled={!puedeIngresar}
-            startIcon={<ArrowDownToLine size={18} />}
-            onClick={() => onIngresoPlaza?.(selectedPlaza || null)}
-            sx={{ minHeight: 46, fontSize: '0.9rem' }}
-          >
-            Registrar ingreso
-          </Button>
+          {esPlazaAbonado ? (
+            <Alert severity="info" sx={{ py: 0.75 }}>
+              Plaza de abonado: no se registra ingreso ni se emite ticket.
+            </Alert>
+          ) : (
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              disabled={!puedeIngresar}
+              startIcon={<ArrowDownToLine size={18} />}
+              onClick={() => onIngresoPlaza?.(selectedPlaza || null)}
+              sx={{ minHeight: 46, fontSize: '0.9rem' }}
+            >
+              Registrar ingreso
+            </Button>
+          )}
 
           {selectedPlaza?.ocupada && selectedPlaza?.patentes?.length > 1 && (
             <Typography variant="caption" color="text.secondary">

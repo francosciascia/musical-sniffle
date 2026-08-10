@@ -84,6 +84,13 @@ export default function MapaPage() {
   }
 
   function abrirIngreso(plaza) {
+    if (plaza?.reservada && !plaza?.ocupada) {
+      setAvisos([
+        `Plaza ${plaza.codigo} es de abonado${plaza.reservaCliente ? ` (${plaza.reservaCliente})` : ''}. No requiere ingreso ni ticket.`,
+      ])
+      setSelectedPlaza(plaza)
+      return
+    }
     setSelectedPlaza(plaza || null)
     setDialogOpen(true)
   }

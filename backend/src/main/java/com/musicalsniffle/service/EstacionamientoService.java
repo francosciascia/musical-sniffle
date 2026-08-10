@@ -24,7 +24,6 @@ import com.musicalsniffle.repository.EstadiaRepository;
 import com.musicalsniffle.repository.PlazaRepository;
 import com.musicalsniffle.repository.TicketRepository;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +61,8 @@ public class EstacionamientoService {
     @Transactional(readOnly = true)
     public List<EstadiaResponse> listarEstadiasActivas() {
         return estadiaRepository.findByEstado(EstadoEstadia.ABIERTA).stream()
+                // Abonados no usan ticket/estadía: solo visitantes
+                .filter(estadia -> !estadia.isAbonado())
                 .map(estadia -> {
                     TicketResponse ticket = ticketRepository.findByEstadiaId(estadia.getId())
                             .map(TicketResponse::from)
@@ -96,6 +97,7 @@ public class EstacionamientoService {
                 estadiaRepository.findByAuto_PatenteContainingIgnoreCaseAndEstado(q, EstadoEstadia.ABIERTA);
 
         return candidatas.stream()
+                .filter(estadia -> !estadia.isAbonado())
                 .sorted((a, b) -> {
                     boolean ae = a.getAuto().getPatente().equalsIgnoreCase(q);
                     boolean be = b.getAuto().getPatente().equalsIgnoreCase(q);
@@ -131,7 +133,11 @@ public class EstacionamientoService {
             if (piso != null && plaza.getPiso() != piso) {
                 continue;
             }
-            List<Estadia> abiertas = estadiaRepository.findAllByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA);
+            List<Estadia> abiertas = estadiaRepository.findAllByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA)
+                    .stream()
+                    // Abonados no se muestran como ocupación con patente
+                    .filter(e -> !e.isAbonado())
+                    .toList();
             var reservaPlaza = reservaService.buscarActivaPorPlaza(plaza.getId());
 
             List<String> patentes = abiertas.stream()
@@ -213,6 +219,15 @@ public class EstacionamientoService {
                 .orElseThrow(() -> new IllegalArgumentException("Auto no encontrado: " + autoId));
 
         validarAutoSinEstadiaAbierta(auto);
+        Optional<Reserva> reservaActiva = reservaService.buscarActivaPorAuto(autoId);
+        if (reservaActiva.isPresent()) {
+            Plaza plazaAbono = reservaActiva.get().getPlaza();
+            throw new IllegalStateException(
+                    "Abonado con plaza "
+                            + (plazaAbono != null ? plazaAbono.getCodigo() : "fija")
+                            + ". No requiere ingreso ni ticket: estaciona en su lugar.");
+        }
+
         Optional<Reserva> suspendida = reservaService.buscarSuspendidaPorAuto(autoId);
         if (suspendida.isPresent()) {
             if (ajustesService.isBloquearIngresoSiSuspendida()) {
@@ -221,22 +236,21 @@ public class EstacionamientoService {
                                 + "). Registrá el pago mensual o reactivá el abono.");
             }
         }
-        Optional<Reserva> reservaActiva = reservaService.buscarActivaPorAuto(autoId);
-        Plaza plaza = resolverPlaza(plazaId, reservaActiva);
-        validarPlazaLibre(plaza, auto);
-        validarPlazaDisponibleParaAuto(plaza, reservaActiva);
 
-        boolean abonado = reservaActiva.isPresent();
-        Cliente cliente = resolverCliente(clienteId, reservaActiva);
+        Plaza plaza = resolverPlaza(plazaId, Optional.empty());
+        validarPlazaLibre(plaza, auto);
+        validarPlazaDisponibleParaAuto(plaza, Optional.empty());
+
+        Cliente cliente = resolverCliente(clienteId, Optional.empty());
 
         Estadia estadia = Estadia.builder()
                 .auto(auto)
                 .plaza(plaza)
                 .cliente(cliente)
-                .reserva(reservaActiva.orElse(null))
+                .reserva(null)
                 .entrada(LocalDateTime.now())
                 .estado(EstadoEstadia.ABIERTA)
-                .abonado(abonado)
+                .abonado(false)
                 .build();
 
         Estadia guardada = estadiaRepository.save(estadia);
@@ -246,20 +260,18 @@ public class EstacionamientoService {
                 TipoEvento.INGRESO,
                 "Ingreso de " + auto.getPatente()
                         + (plaza != null ? " en plaza " + plaza.getCodigo() : "")
-                        + " - ticket " + ticket.getCodigo()
-                        + (abonado ? " (abonado)" : ""),
+                        + " - ticket " + ticket.getCodigo(),
                 operador,
                 "Estadia",
                 guardada.getId(),
                 null);
 
-        List<String> avisos = construirAvisosIngreso(reservaActiva);
-        if (suspendida.isPresent() && !abonado) {
-            avisos = new ArrayList<>(avisos);
+        List<String> avisos = new ArrayList<>();
+        if (suspendida.isPresent()) {
             avisos.add(
                     "Abono suspendido (plaza "
                             + suspendida.get().getPlaza().getCodigo()
-                            + "). Conviene cobrar / reactivar.");
+                            + "). Conviene cobrar / reactivar. Ingreso como visitante.");
         }
         return EstadiaResponse.from(guardada, TicketResponse.from(ticket), avisos);
     }
@@ -510,35 +522,6 @@ public class EstacionamientoService {
 
         throw new IllegalStateException(
                 "La plaza " + plaza.getCodigo() + " está reservada para un abonado");
-    }
-
-    private List<String> construirAvisosIngreso(Optional<Reserva> reservaOpt) {
-        if (reservaOpt.isEmpty()) {
-            return List.of();
-        }
-
-        Reserva reserva = reservaOpt.get();
-        var ajustes = ajustesService.getEntity();
-        LocalDate hoy = LocalDate.now();
-        List<String> avisos = new ArrayList<>();
-
-        if (reserva.getFechaFin() != null) {
-            LocalDate fin = reserva.getFechaFin();
-            if (ajustes.isAvisarAbonoEnGracia() && fin.isBefore(hoy)) {
-                avisos.add("Abono vencido el " + fin + " — dentro de los días de gracia; conviene renovar.");
-            } else if (ajustes.getDiasAvisoVencimiento() > 0) {
-                LocalDate limiteAviso = hoy.plusDays(ajustes.getDiasAvisoVencimiento());
-                if (!fin.isAfter(limiteAviso) && !fin.isBefore(hoy)) {
-                    long dias = java.time.temporal.ChronoUnit.DAYS.between(hoy, fin);
-                    avisos.add(
-                            dias == 0
-                                    ? "Abono vence hoy (" + fin + ")."
-                                    : "Abono vence en " + dias + " día(s) (" + fin + ").");
-                }
-            }
-        }
-
-        return avisos;
     }
 
     private void validarAutoSinEstadiaAbierta(Auto auto) {

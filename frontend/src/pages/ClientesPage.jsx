@@ -24,8 +24,10 @@ import PageHeader from '../components/PageHeader'
 import TablePager from '../components/TablePager'
 import api from '../api/client'
 import { usePagedRows } from '../hooks/usePagedRows'
+import { useFormArrowNav } from '../hooks/useFormArrowNav'
 import { colors } from '../theme/colors'
 import { isPatenteValida, normalizePatente, patenteHelperText } from '../utils/patente'
+import { capitalizarNombre } from '../utils/texto'
 
 const EMPTY = {
   nombre: '',
@@ -109,8 +111,8 @@ export default function ClientesPage() {
     setError('')
     setOk('')
     const payload = {
-      nombre: form.nombre.trim(),
-      apellido: form.apellido.trim(),
+      nombre: capitalizarNombre(form.nombre),
+      apellido: capitalizarNombre(form.apellido),
       dni: form.dni.trim(),
       email: form.email.trim(),
       telefono: form.telefono.trim(),
@@ -176,6 +178,7 @@ export default function ClientesPage() {
     form.telefono.trim().length >= 8
 
   const autoOk = isPatenteValida(autoForm.patente) && autoForm.modelo.trim()
+  const onFormArrowNav = useFormArrowNav()
 
   return (
     <AppLayout>
@@ -292,35 +295,46 @@ export default function ClientesPage() {
         fullWidth
         PaperProps={{ sx: { m: { xs: 1, sm: 2 }, width: '100%' } }}
       >
-        <DialogTitle>{editando ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, pt: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            {editando
-              ? 'Actualizá nombre, DNI, email o teléfono.'
-              : 'Después podés cargarle autos y usarlo en Reservas.'}
-          </Typography>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <TextField label="Nombre" value={form.nombre} onChange={setField('nombre')} fullWidth required />
-            <TextField label="Apellido" value={form.apellido} onChange={setField('apellido')} fullWidth required />
-          </Stack>
-          <TextField label="DNI" value={form.dni} onChange={setField('dni')} fullWidth required />
-          <TextField label="Email" type="email" value={form.email} onChange={setField('email')} fullWidth required />
-          <TextField label="Teléfono" value={form.telefono} onChange={setField('telefono')} fullWidth required />
-        </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 2 }}>
-          <Button
-            onClick={() => {
-              setOpen(false)
-              setEditando(null)
-            }}
-            disabled={loading}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!loading && formOk) guardar()
+          }}
+        >
+          <DialogTitle>{editando ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle>
+          <DialogContent
+            onKeyDown={onFormArrowNav}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 1.75, pt: 1 }}
           >
-            Cancelar
-          </Button>
-          <Button variant="contained" onClick={guardar} disabled={loading || !formOk}>
-            {loading ? 'Guardando…' : editando ? 'Guardar' : 'Crear'}
-          </Button>
-        </DialogActions>
+            <Typography variant="caption" color="text.secondary">
+              {editando
+                ? 'Actualizá nombre, DNI, email o teléfono. ↑↓ cambian de campo · Enter guarda.'
+                : 'Después podés cargarle autos y usarlo en Reservas. ↑↓ cambian de campo · Enter crea.'}
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <TextField label="Nombre" value={form.nombre} onChange={setField('nombre')} fullWidth required />
+              <TextField label="Apellido" value={form.apellido} onChange={setField('apellido')} fullWidth required />
+            </Stack>
+            <TextField label="DNI" value={form.dni} onChange={setField('dni')} fullWidth required />
+            <TextField label="Email" type="email" value={form.email} onChange={setField('email')} fullWidth required />
+            <TextField label="Teléfono" value={form.telefono} onChange={setField('telefono')} fullWidth required />
+          </DialogContent>
+          <DialogActions sx={{ px: 2, pb: 2 }}>
+            <Button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setEditando(null)
+              }}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" variant="contained" disabled={loading || !formOk}>
+              {loading ? 'Guardando…' : editando ? 'Guardar' : 'Crear'}
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
 
       <Dialog
@@ -330,87 +344,96 @@ export default function ClientesPage() {
         fullWidth
         PaperProps={{ sx: { m: { xs: 1, sm: 2 }, width: '100%' } }}
       >
-        <DialogTitle>
-          Autos · {autosCliente?.nombre} {autosCliente?.apellido}
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Estos vehículos aparecen al crear una reserva para este cliente.
-          </Typography>
-
-          {autos.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Todavía no tiene autos.
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!autoLoading && autoOk) crearAuto()
+          }}
+        >
+          <DialogTitle>
+            Autos · {autosCliente?.nombre} {autosCliente?.apellido}
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Estos vehículos aparecen al crear una reserva para este cliente. Enter agrega el auto.
             </Typography>
-          ) : (
-            <Table size="small" sx={{ mb: 2 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Patente</TableCell>
-                  <TableCell>Tipo</TableCell>
-                  <TableCell>Modelo</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {autos.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="mono">{a.patente}</TableCell>
-                    <TableCell>{a.tipo}</TableCell>
-                    <TableCell>{a.modelo}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
 
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Agregar auto
-          </Typography>
-          <Stack spacing={1.5}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            {autos.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Todavía no tiene autos.
+              </Typography>
+            ) : (
+              <Table size="small" sx={{ mb: 2 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Patente</TableCell>
+                    <TableCell>Tipo</TableCell>
+                    <TableCell>Modelo</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {autos.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="mono">{a.patente}</TableCell>
+                      <TableCell>{a.tipo}</TableCell>
+                      <TableCell>{a.modelo}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Agregar auto
+            </Typography>
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <TextField
+                  label="Patente"
+                  value={autoForm.patente}
+                  onChange={(e) =>
+                    setAutoForm((f) => ({ ...f, patente: normalizePatente(e.target.value).slice(0, 8) }))
+                  }
+                  fullWidth
+                  inputProps={{ className: 'mono', maxLength: 8 }}
+                  helperText={patenteHelperText(autoForm.patente)}
+                />
+                <TextField
+                  select
+                  label="Tipo"
+                  value={autoForm.tipo}
+                  onChange={(e) => setAutoForm((f) => ({ ...f, tipo: e.target.value }))}
+                  fullWidth
+                >
+                  {TIPOS.map((t) => (
+                    <MenuItem key={t} value={t}>
+                      {t}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
               <TextField
-                label="Patente"
-                value={autoForm.patente}
-                onChange={(e) =>
-                  setAutoForm((f) => ({ ...f, patente: normalizePatente(e.target.value).slice(0, 8) }))
-                }
+                label="Modelo"
+                value={autoForm.modelo}
+                onChange={(e) => setAutoForm((f) => ({ ...f, modelo: e.target.value }))}
                 fullWidth
-                inputProps={{ className: 'mono', maxLength: 8 }}
-                helperText={patenteHelperText(autoForm.patente)}
               />
-              <TextField
-                select
-                label="Tipo"
-                value={autoForm.tipo}
-                onChange={(e) => setAutoForm((f) => ({ ...f, tipo: e.target.value }))}
-                fullWidth
-              >
-                {TIPOS.map((t) => (
-                  <MenuItem key={t} value={t}>
-                    {t}
-                  </MenuItem>
-                ))}
-              </TextField>
             </Stack>
-            <TextField
-              label="Modelo"
-              value={autoForm.modelo}
-              onChange={(e) => setAutoForm((f) => ({ ...f, modelo: e.target.value }))}
-              fullWidth
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 2, flexWrap: 'wrap', gap: 1 }}>
-          <Button onClick={() => setAutosCliente(null)}>Cerrar</Button>
-          <Button
-            variant="contained"
-            onClick={crearAuto}
-            disabled={autoLoading || !autoOk}
-            startIcon={<Plus size={16} />}
-          >
-            {autoLoading ? 'Guardando…' : 'Agregar auto'}
-          </Button>
-        </DialogActions>
+          </DialogContent>
+          <DialogActions sx={{ px: 2, pb: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Button type="button" onClick={() => setAutosCliente(null)}>
+              Cerrar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={autoLoading || !autoOk}
+              startIcon={<Plus size={16} />}
+            >
+              {autoLoading ? 'Guardando…' : 'Agregar auto'}
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
     </AppLayout>
   )

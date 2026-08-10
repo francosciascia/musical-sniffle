@@ -79,7 +79,7 @@ export default function EstadiasPage() {
     <AppLayout>
       <PageHeader
         title="Estadías activas"
-        subtitle="Vehículos en el predio. Egresá desde la tabla o buscando patente/ticket."
+        subtitle="Visitantes en el predio (con ticket). Los abonados no figuran acá: estacionan en su plaza sin ingreso."
       />
 
       {error && (

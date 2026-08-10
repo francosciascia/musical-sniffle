@@ -44,11 +44,13 @@ function buildNavItems(rol) {
     items.push(
       { to: '/clientes', label: 'Clientes', icon: Users },
       { to: '/reservas', label: 'Abonos', icon: ClipboardList },
-      { to: '/config', label: 'Configuración', icon: Settings },
     )
   }
   if (isOperador(rol)) {
     items.push({ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard })
+  }
+  if (isAdmin(rol)) {
+    items.push({ to: '/config', label: 'Configuración', icon: Settings })
   }
   return items
 }

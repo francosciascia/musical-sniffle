@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -31,7 +32,9 @@ import PlazaMapPickerDialog from '../components/PlazaMapPickerDialog'
 import TablePager from '../components/TablePager'
 import api from '../api/client'
 import { usePagedRows } from '../hooks/usePagedRows'
+import { useFormArrowNav } from '../hooks/useFormArrowNav'
 import { colors } from '../theme/colors'
+import { downloadContratoAbonoPdf } from '../utils/contratoAbonoPdf'
 
 const ESTADOS = ['ACTIVA', 'SUSPENDIDA', 'VENCIDA', 'CANCELADA']
 
@@ -182,7 +185,7 @@ export default function ReservasPage() {
     setLoading(true)
     setError('')
     try {
-      await api.post('/admin/reservas', {
+      const { data } = await api.post('/admin/reservas', {
         clienteId: Number(form.clienteId),
         plazaId: Number(form.plazaId),
         autoIds: form.autoIds.map(Number),
@@ -191,6 +194,17 @@ export default function ReservasPage() {
         montoMensual: Number(form.montoMensual),
         estado: form.estado,
       })
+      const cliente = clientes.find((c) => String(c.id) === String(form.clienteId))
+      try {
+        downloadContratoAbonoPdf({
+          reserva: data,
+          cliente,
+          estacionamientoNombre: 'Musical Sniffle',
+        })
+        setOk('Abono creado. Se descargó el contrato PDF para firmar.')
+      } catch {
+        setOk('Abono creado. No se pudo generar el PDF del contrato.')
+      }
       setDialogOpen(false)
       setForm(formVacio())
       cargar()
@@ -235,6 +249,9 @@ export default function ReservasPage() {
   }
 
   const pendientes = aCobrar.filter((r) => r.motivoCobro && r.motivoCobro !== 'al_dia').length
+  const onFormArrowNav = useFormArrowNav()
+
+  const clienteSeleccionado = clientes.find((c) => String(c.id) === String(form.clienteId)) || null
 
   return (
     <AppLayout maxWidth="xl">
@@ -363,159 +380,172 @@ export default function ReservasPage() {
       />
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Nueva reserva mensual</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ pt: 1 }}>
-            <TextField
-              select
-              label="Cliente"
-              value={form.clienteId}
-              onChange={(e) => setForm({ ...form, clienteId: e.target.value, autoIds: [] })}
-              fullWidth
-              helperText={
-                clientes.length === 0 ? 'No hay clientes — crealos en el menú Clientes' : undefined
-              }
-            >
-              {clientes.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.nombre} {c.apellido} ({c.email})
-                </MenuItem>
-              ))}
-            </TextField>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!loading) crearReserva()
+          }}
+        >
+          <DialogTitle>Nueva reserva mensual</DialogTitle>
+          <DialogContent onKeyDown={onFormArrowNav}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, pt: 0.5 }}>
+              Tip: escribí para filtrar en Cliente/Plaza. ↑↓ saltan entre campos · Enter crea.
+            </Typography>
+            <Stack spacing={2.5}>
+              <Autocomplete
+                options={clientes}
+                value={clienteSeleccionado}
+                onChange={(_, value) =>
+                  setForm({ ...form, clienteId: value ? String(value.id) : '', autoIds: [] })
+                }
+                getOptionLabel={(c) => `${c.nombre} ${c.apellido} (${c.email})`}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Cliente"
+                    helperText={
+                      clientes.length === 0 ? 'No hay clientes — crealos en el menú Clientes' : 'Escribí nombre o email'
+                    }
+                  />
+                )}
+              />
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'flex-start' }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'flex-start' }}>
+                <Autocomplete
+                  sx={{ flex: 1 }}
+                  options={plazas}
+                  value={plazaSeleccionada || null}
+                  onChange={(_, value) => setForm({ ...form, plazaId: value ? String(value.id) : '' })}
+                  getOptionLabel={(p) =>
+                    `${p.codigo}${p.piso != null ? ` · Piso ${p.piso}` : ''}`
+                  }
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Plaza" helperText="Escribí el código (ej. A3) o elegí del mapa" />
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="outlined"
+                  startIcon={<MapPin size={16} />}
+                  onClick={() => setMapOpen(true)}
+                  sx={{ flexShrink: 0, mt: { sm: 0.5 }, whiteSpace: 'nowrap' }}
+                >
+                  Elegir en mapa
+                </Button>
+              </Stack>
+
               <TextField
                 select
-                label="Plaza"
-                value={form.plazaId}
-                onChange={(e) => setForm({ ...form, plazaId: e.target.value })}
+                label="Autos del cliente"
+                value={form.autoIds.map(String)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  setAutoIds(typeof raw === 'string' ? raw.split(',').filter(Boolean) : raw.map(String))
+                }}
+                slotProps={{
+                  select: {
+                    multiple: true,
+                    renderValue: (selected) => {
+                      const ids = selected || []
+                      if (!ids.length) return 'Ninguno'
+                      return ids
+                        .map((id) => autosCliente.find((a) => String(a.id) === String(id))?.patente || id)
+                        .join(', ')
+                    },
+                  },
+                }}
                 fullWidth
-                helperText={plazaSeleccionada ? `Código ${plazaSeleccionada.codigo}` : 'Lista o mapa'}
+                disabled={!form.clienteId || autosCliente.length === 0}
+                helperText={
+                  !form.clienteId
+                    ? 'Primero elegí un cliente'
+                    : autosCliente.length === 0
+                      ? 'El cliente no tiene autos — cargalos en Clientes → Ver autos'
+                      : 'Tocá para marcar uno o más vehículos'
+                }
               >
-                {plazas.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.codigo}
-                    {p.piso != null ? ` · Piso ${p.piso}` : ''}
+                {autosCliente.map((a) => (
+                  <MenuItem key={a.id} value={String(a.id)}>
+                    {a.patente} ({a.tipo}
+                    {precioPorTipo[a.tipo] != null
+                      ? ` · ${formatMoney(precioPorTipo[a.tipo])}/mes`
+                      : ''}
+                    )
                   </MenuItem>
                 ))}
               </TextField>
-              <Button
-                variant="outlined"
-                startIcon={<MapPin size={16} />}
-                onClick={() => setMapOpen(true)}
-                sx={{ flexShrink: 0, mt: { sm: 0.5 }, whiteSpace: 'nowrap' }}
-              >
-                Elegir en mapa
-              </Button>
-            </Stack>
 
-            <TextField
-              select
-              label="Autos del cliente"
-              value={form.autoIds.map(String)}
-              onChange={(e) => {
-                const raw = e.target.value
-                setAutoIds(typeof raw === 'string' ? raw.split(',').filter(Boolean) : raw.map(String))
-              }}
-              slotProps={{
-                select: {
-                  multiple: true,
-                  renderValue: (selected) => {
-                    const ids = selected || []
-                    if (!ids.length) return 'Ninguno'
-                    return ids
-                      .map((id) => autosCliente.find((a) => String(a.id) === String(id))?.patente || id)
-                      .join(', ')
-                  },
-                },
-              }}
-              fullWidth
-              disabled={!form.clienteId || autosCliente.length === 0}
-              helperText={
-                !form.clienteId
-                  ? 'Primero elegí un cliente'
-                  : autosCliente.length === 0
-                    ? 'El cliente no tiene autos — cargalos en Clientes → Ver autos'
-                    : 'Tocá para marcar uno o más vehículos'
-              }
-            >
-              {autosCliente.map((a) => (
-                <MenuItem key={a.id} value={String(a.id)}>
-                  {a.patente} ({a.tipo}
-                  {precioPorTipo[a.tipo] != null
-                    ? ` · ${formatMoney(precioPorTipo[a.tipo])}/mes`
-                    : ''}
-                  )
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <DateField
-                label="Fecha de inicio"
-                value={form.fechaInicio}
-                onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })}
-                fullWidth
-                required
-              />
-              <DateField
-                label="Fecha de fin"
-                value={form.fechaFin}
-                onChange={(e) => setForm({ ...form, fechaFin: e.target.value })}
-                fullWidth
-                helperText="Opcional — vacío = indefinida"
-              />
-            </Stack>
-
-            <Box>
-              <TextField
-                label="Monto mensual"
-                type="number"
-                value={form.montoMensual}
-                onChange={(e) => setForm({ ...form, montoMensual: e.target.value })}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                helperText={
-                  montoSugeridoAutos
-                    ? `Sugerido por vehículos: ${formatMoney(montoSugeridoAutos.monto)} (${montoSugeridoAutos.tipo})`
-                    : 'Elegí un monto redondo o tocá una sugerencia'
-                }
-              />
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.25 }}>
-                {chipsMonto.map((m) => (
-                  <Chip
-                    key={m}
-                    size="small"
-                    label={formatMoney(m)}
-                    color={String(form.montoMensual) === String(m) ? 'primary' : 'default'}
-                    variant={String(form.montoMensual) === String(m) ? 'filled' : 'outlined'}
-                    onClick={() => setForm({ ...form, montoMensual: String(m) })}
-                  />
-                ))}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <DateField
+                  label="Fecha de inicio"
+                  value={form.fechaInicio}
+                  onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })}
+                  fullWidth
+                  required
+                />
+                <DateField
+                  label="Fecha de fin"
+                  value={form.fechaFin}
+                  onChange={(e) => setForm({ ...form, fechaFin: e.target.value })}
+                  fullWidth
+                  helperText="Opcional — vacío = indefinida"
+                />
               </Stack>
-            </Box>
 
-            <TextField
-              select
-              label="Estado"
-              value={form.estado}
-              onChange={(e) => setForm({ ...form, estado: e.target.value })}
-              fullWidth
-            >
-              {ESTADOS.map((e) => (
-                <MenuItem key={e} value={e}>
-                  {e}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={crearReserva} disabled={loading}>
-            Crear
-          </Button>
-        </DialogActions>
+              <Box>
+                <TextField
+                  label="Monto mensual"
+                  type="number"
+                  value={form.montoMensual}
+                  onChange={(e) => setForm({ ...form, montoMensual: e.target.value })}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  helperText={
+                    montoSugeridoAutos
+                      ? `Sugerido por vehículos: ${formatMoney(montoSugeridoAutos.monto)} (${montoSugeridoAutos.tipo})`
+                      : 'Elegí un monto redondo o tocá una sugerencia'
+                  }
+                />
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.25 }}>
+                  {chipsMonto.map((m) => (
+                    <Chip
+                      key={m}
+                      size="small"
+                      label={formatMoney(m)}
+                      color={String(form.montoMensual) === String(m) ? 'primary' : 'default'}
+                      variant={String(form.montoMensual) === String(m) ? 'filled' : 'outlined'}
+                      onClick={() => setForm({ ...form, montoMensual: String(m) })}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+
+              <TextField
+                select
+                label="Estado"
+                value={form.estado}
+                onChange={(e) => setForm({ ...form, estado: e.target.value })}
+                fullWidth
+              >
+                {ESTADOS.map((e) => (
+                  <MenuItem key={e} value={e}>
+                    {e}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={() => setDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="contained" disabled={loading}>
+              {loading ? 'Creando…' : 'Crear abono y descargar contrato'}
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
 
       <PlazaMapPickerDialog

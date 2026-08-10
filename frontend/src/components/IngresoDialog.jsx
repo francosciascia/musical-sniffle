@@ -14,6 +14,7 @@ import {
 import { ArrowDownToLine, MapPin } from 'lucide-react'
 import api from '../api/client'
 import PlazaMapPickerDialog from './PlazaMapPickerDialog'
+import { useFormArrowNav } from '../hooks/useFormArrowNav'
 import { isPatenteValida, normalizePatente, patenteHelperText } from '../utils/patente'
 
 const TIPOS = ['AUTO', 'CAMIONETA', 'MOTO', 'CAMION']
@@ -26,6 +27,7 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
   const [mapOpen, setMapOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const onFormArrowNav = useFormArrowNav()
 
   useEffect(() => {
     if (open) {
@@ -113,6 +115,7 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
             {plazaElegida ? `Ingreso · Plaza ${plazaElegida.codigo}` : 'Registrar ingreso'}
           </DialogTitle>
           <DialogContent
+            onKeyDown={onFormArrowNav}
             sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -122,14 +125,15 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
             }}
           >
             {plazaElegida?.reservada && (
-              <Alert severity="warning" sx={{ py: 0.5 }}>
-                Plaza reservada
-                {plazaElegida.reservaCliente ? ` · ${plazaElegida.reservaCliente}` : ''}
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                Plaza de abonado
+                {plazaElegida.reservaCliente ? ` · ${plazaElegida.reservaCliente}` : ''}.
+                No requiere ingreso ni ticket: puede estacionar en su lugar.
               </Alert>
             )}
             {!plazaElegida && (
               <Typography variant="body2" color="text.secondary">
-                Patente y modelo. La plaza es opcional (mapa).
+                Solo visitantes. Si la patente tiene abono activo, no se emite ticket.
               </Typography>
             )}
 
@@ -203,13 +207,13 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
             </TextField>
           </DialogContent>
           <DialogActions sx={{ px: 2.5, pb: 2, pt: 1, gap: 1 }}>
-            <Button onClick={handleClose} disabled={loading}>
+            <Button type="button" onClick={handleClose} disabled={loading}>
               Cancelar
             </Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={loading}
+              disabled={loading || !!plazaElegida?.reservada}
               startIcon={<ArrowDownToLine size={16} />}
               sx={{ minHeight: 40 }}
             >

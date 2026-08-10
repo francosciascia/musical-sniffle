@@ -12,18 +12,68 @@ import {
 } from '../utils/plazaLayout'
 import { colors, plazaFill, plazaStroke } from '../theme/colors'
 
-function plazaLabel(plaza) {
+/** Texto secundario corto para que no se rompa en la celda. */
+function plazaSubLabel(plaza) {
   if (plaza.patentes?.length > 1) {
-    return `${plaza.codigo}\n${plaza.patentes.join('\n')}`
+    return `${plaza.patentes.length} veh.`
   }
   if (plaza.ocupada || plaza.puedeOtraMoto) {
-    return `${plaza.codigo}\n${plaza.patente || plaza.patentes?.[0] || ''}`
+    const raw = (plaza.patente || plaza.patentes?.[0] || '').toUpperCase()
+    if (!raw) return ''
+    // Evita el salto raro "AB123C" / "D"
+    return raw.length > 7 ? `${raw.slice(0, 6)}…` : raw
   }
-  if (plaza.reservada) {
-    const abonado = plaza.reservaCliente?.split(' ')[0] || 'Abonado'
-    return `${plaza.codigo}\n${abonado}`
-  }
-  return plaza.codigo
+  if (plaza.reservada) return 'Abono'
+  return ''
+}
+
+function PlazaLabel({ plaza, m }) {
+  const w = m.inner
+  const sub = plazaSubLabel(plaza)
+  const hasSub = !!sub
+
+  return (
+    <>
+      <Text
+        x={plaza.x}
+        y={plaza.y + (hasSub ? m.codeY : m.inner / 2 - m.fontCode / 2)}
+        width={w}
+        height={m.fontCode + 2}
+        text={plaza.codigo}
+        align="center"
+        verticalAlign="middle"
+        fontSize={m.fontCode}
+        fontFamily='"Inter", system-ui, sans-serif'
+        fontStyle="bold"
+        fill={colors.mapText}
+        wrap="none"
+        ellipsis
+        listening={false}
+      />
+      {hasSub && (
+        <Text
+          x={plaza.x + 2}
+          y={plaza.y + m.subY}
+          width={w - 4}
+          height={m.fontSub + 4}
+          text={sub}
+          align="center"
+          verticalAlign="middle"
+          fontSize={m.fontSub}
+          fontFamily={
+            plaza.reservada && !plaza.ocupada
+              ? '"Inter", system-ui, sans-serif'
+              : '"Roboto Mono", ui-monospace, monospace'
+          }
+          fontStyle={plaza.reservada && !plaza.ocupada ? 'bold' : 'normal'}
+          fill="rgba(255,255,255,0.92)"
+          wrap="none"
+          ellipsis
+          listening={false}
+        />
+      )}
+    </>
+  )
 }
 
 function MapStage({
@@ -50,15 +100,26 @@ function MapStage({
         <GridLines grid={grid} />
 
         {piso != null && (
-          <Text
-            x={12}
-            y={8}
-            text={`PISO ${piso}`}
-            fontSize={13}
-            fontStyle="bold"
-            fill={colors.primary}
-            listening={false}
-          />
+          <>
+            <Rect
+              x={8}
+              y={6}
+              width={72}
+              height={22}
+              cornerRadius={4}
+              fill={colors.mapCanvas}
+              listening={false}
+            />
+            <Text
+              x={12}
+              y={10}
+              text={`PISO ${piso}`}
+              fontSize={13}
+              fontStyle="bold"
+              fill={colors.primary}
+              listening={false}
+            />
+          </>
         )}
 
         {positioned.map((plaza) => {
@@ -70,8 +131,8 @@ function MapStage({
               key={plaza.id}
               x={plaza.x}
               y={plaza.y}
-              width={m.size - m.inset}
-              height={m.size - m.inset}
+              width={m.inner}
+              height={m.inner}
               cornerRadius={Math.max(2, Math.round(grid.cell * 0.12))}
               fill={plazaFill(plaza, selected)}
               stroke={plazaStroke(plaza, selected)}
@@ -84,18 +145,7 @@ function MapStage({
         })}
 
         {positioned.map((plaza) => (
-          <Text
-            key={`label-${plaza.id}`}
-            x={plaza.x}
-            y={plaza.y + m.labelY}
-            width={m.size - m.inset}
-            text={plazaLabel(plaza)}
-            align="center"
-            fontSize={m.font}
-            fill={colors.mapText}
-            fontStyle="bold"
-            listening={false}
-          />
+          <PlazaLabel key={`label-${plaza.id}`} plaza={plaza} m={m} />
         ))}
 
         {plazas.length === 0 && piso != null && !celdasForma?.length && (

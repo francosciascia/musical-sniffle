@@ -196,24 +196,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         }
 
         int estadias = 0;
-        for (int i = 0; i < 5; i++) {
-            Auto auto = autosAbono.get(i);
-            Plaza plaza = plazas.get(i);
-            if (estadiaRepository.findByAutoAndEstado(auto, EstadoEstadia.ABIERTA).isPresent()) {
-                continue;
-            }
-            if (!estadiaRepository.findAllByPlazaAndEstado(plaza, EstadoEstadia.ABIERTA).isEmpty()) {
-                continue;
-            }
-            try {
-                var r = estacionamientoService.registrarIngreso(
-                        auto.getId(), plaza.getId(), clientes.get(i).getId(), operador);
-                retrocederEntrada(r.getId(), 20 + i * 15);
-                estadias++;
-            } catch (Exception ex) {
-                log.warn("Demo data: estadía abonado omitida ({}): {}", auto.getPatente(), ex.getMessage());
-            }
-        }
+        // Abonados no generan estadía/ticket: solo estacionan en su plaza reservada.
 
         int plazaVisitaIdx = 10;
         for (int i = 0; i < Math.min(8, visitantes.size()); i++) {

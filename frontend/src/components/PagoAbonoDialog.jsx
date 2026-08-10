@@ -132,91 +132,98 @@ export default function PagoAbonoDialog({ open, reserva, onClose, onSuccess }) {
 
   return (
     <Dialog open={open} onClose={() => !loading && onClose?.()} maxWidth="xs" fullWidth>
-      <DialogTitle
-        sx={{
-          pb: 1,
-          fontFamily: '"Oswald", "Inter", sans-serif',
-          fontWeight: 600,
-          letterSpacing: '0.03em',
-          textTransform: 'uppercase',
-          fontSize: '1.15rem',
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!loading && reserva && !esperandoQr) confirmar()
         }}
       >
-        Registrar pago
-      </DialogTitle>
-      <DialogContent sx={{ pt: '4px !important', pb: 1 }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError('')}>
-            {error}
-          </Alert>
-        )}
-        {autoOk && (
-          <Alert severity="success" sx={{ mb: 1.5 }}>
-            {autoOk}
-          </Alert>
-        )}
-        {reserva && (
-          <Stack spacing={1.75} sx={{ pt: 0.5 }}>
-            <Box
-              sx={{
-                p: 1.25,
-                borderRadius: '6px',
-                bgcolor: colors.surfaceAlt,
-                border: `1px solid ${colors.border}`,
-              }}
-            >
-              <Typography sx={{ fontWeight: 700, fontSize: '1.05rem' }}>{reserva.clienteNombre}</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                Plaza {reserva.plazaCodigo}
-                {reserva.patentes?.length ? ` · ${reserva.patentes.join(', ')}` : ''}
-              </Typography>
-              <Typography
-                className="mono"
-                sx={{ mt: 0.75, fontWeight: 800, fontSize: '1.35rem', color: colors.primaryDark }}
+        <DialogTitle
+          sx={{
+            pb: 1,
+            fontFamily: '"Oswald", "Inter", sans-serif',
+            fontWeight: 600,
+            letterSpacing: '0.03em',
+            textTransform: 'uppercase',
+            fontSize: '1.15rem',
+          }}
+        >
+          Registrar pago
+        </DialogTitle>
+        <DialogContent sx={{ pt: '4px !important', pb: 1 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
+          {autoOk && (
+            <Alert severity="success" sx={{ mb: 1.5 }}>
+              {autoOk}
+            </Alert>
+          )}
+          {reserva && (
+            <Stack spacing={1.75} sx={{ pt: 0.5 }}>
+              <Box
+                sx={{
+                  p: 1.25,
+                  borderRadius: '6px',
+                  bgcolor: colors.surfaceAlt,
+                  border: `1px solid ${colors.border}`,
+                }}
               >
-                {formatMoney(monto)}
-              </Typography>
-            </Box>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.05rem' }}>{reserva.clienteNombre}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                  Plaza {reserva.plazaCodigo}
+                  {reserva.patentes?.length ? ` · ${reserva.patentes.join(', ')}` : ''}
+                </Typography>
+                <Typography
+                  className="mono"
+                  sx={{ mt: 0.75, fontWeight: 800, fontSize: '1.35rem', color: colors.primaryDark }}
+                >
+                  {formatMoney(monto)}
+                </Typography>
+              </Box>
 
-            <MedioPagoCobroPanel
-              monto={monto}
-              medio={medio}
-              onMedioChange={(v) => {
-                setMedio(v)
-                setError('')
-                setMpInfo(null)
-                setAutoOk('')
-              }}
-              pagoExacto={pagoExacto}
-              onPagoExactoChange={setPagoExacto}
-              montoRecibido={montoRecibido}
-              onMontoRecibidoChange={setMontoRecibido}
-              comprobante={comprobante}
-              onComprobanteChange={setComprobante}
-              mpInfo={mpInfo}
-              onGenerarQr={generarQr}
-              loadingMp={loadingMp}
-              esperandoPago={esperandoQr}
-            />
-          </Stack>
-        )}
-      </DialogContent>
-      <DialogActions sx={{ px: 2.5, pb: 2, pt: 1, gap: 1 }}>
-        <Button onClick={() => onClose?.()} disabled={loading}>
-          {esperandoQr ? 'Cerrar' : 'Cancelar'}
-        </Button>
-        {!esperandoQr && (
-          <Button
-            variant="contained"
-            startIcon={<Banknote size={16} />}
-            onClick={confirmar}
-            disabled={loading || !reserva}
-            sx={{ minHeight: 40 }}
-          >
-            {loading ? 'Registrando…' : 'Confirmar pago'}
+              <MedioPagoCobroPanel
+                monto={monto}
+                medio={medio}
+                onMedioChange={(v) => {
+                  setMedio(v)
+                  setError('')
+                  setMpInfo(null)
+                  setAutoOk('')
+                }}
+                pagoExacto={pagoExacto}
+                onPagoExactoChange={setPagoExacto}
+                montoRecibido={montoRecibido}
+                onMontoRecibidoChange={setMontoRecibido}
+                comprobante={comprobante}
+                onComprobanteChange={setComprobante}
+                mpInfo={mpInfo}
+                onGenerarQr={generarQr}
+                loadingMp={loadingMp}
+                esperandoPago={esperandoQr}
+              />
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2, pt: 1, gap: 1 }}>
+          <Button type="button" onClick={() => onClose?.()} disabled={loading}>
+            {esperandoQr ? 'Cerrar' : 'Cancelar'}
           </Button>
-        )}
-      </DialogActions>
+          {!esperandoQr && (
+            <Button
+              type="submit"
+              variant="contained"
+              startIcon={<Banknote size={16} />}
+              disabled={loading || !reserva}
+              sx={{ minHeight: 40 }}
+            >
+              {loading ? 'Registrando…' : 'Confirmar pago'}
+            </Button>
+          )}
+        </DialogActions>
+      </form>
     </Dialog>
   )
 }

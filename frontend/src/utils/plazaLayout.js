@@ -1,4 +1,4 @@
-export const GRID_PAD = 20
+export const GRID_PAD = 36
 /** Tamaño de celda por defecto (px). En grillas grandes se reduce solo. */
 export const GRID_CELL = 50
 export const GRID_COLS = 12
@@ -61,9 +61,20 @@ export function matchPreset(cols, rows) {
 }
 
 export function plazaMetrics(cell = GRID_CELL) {
+  const size = cell
+  const inset = Math.max(2, Math.round(cell * 0.1))
+  const inner = size - inset
   return {
-    size: cell,
-    inset: Math.max(2, Math.round(cell * 0.1)),
+    size,
+    inset,
+    inner,
+    /** Código de plaza (línea superior). */
+    fontCode: Math.max(9, Math.round(cell * 0.26)),
+    /** Patente / “Abono” (línea inferior). */
+    fontSub: Math.max(7, Math.round(cell * 0.18)),
+    codeY: Math.max(4, Math.round(cell * 0.18)),
+    subY: Math.max(18, Math.round(cell * 0.52)),
+    // compat
     font: Math.max(7, Math.round(cell * 0.22)),
     labelY: Math.max(8, Math.round(cell * 0.28)),
   }

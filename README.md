@@ -69,21 +69,33 @@ Editá `application-local.yml`:
 
 `application-local.yml` **no se sube a Git**.
 
-## Publicar online (gratis)
+## Mostrar que funciona (demo gratis)
 
-Para **Java + Postgres + Docker**, lo que sigue siendo **gratis** (con límites) es **Render free**.  
-Railway / Fly / Koyeb ya no sirven bien como “siempre gratis” para este stack.
+### Opción rápida — en tu PC + link público (mejor para “mirá, anda”)
 
-### Render free (recomendada)
+1. Levantá todo:
 
-1. [Render Blueprints](https://dashboard.render.com/blueprints) → **New Blueprint Instance**.
-2. Conectá el repo `francosciascia/musical-sniffle` (usa `render.yaml`).
-3. Aplicá el blueprint (Web **free** + Postgres **free**).
-4. Cuando termine el deploy: URL `https://musical-sniffle-….onrender.com`.
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
+```
 
-Límites del free:
-- La web **se duerme** sin tráfico (~15 min); el primer ingreso puede tardar ~1 minuto.
-- El Postgres free es de **prueba** (caduca ~30 días). Para una demo corta alcanza; después hay que recrearlo o pagar.
+2. En otra terminal, túnel gratis (Cloudflare):
+
+```powershell
+winget install --id Cloudflare.cloudflared -e
+cloudflared tunnel --url http://localhost:8080
+```
+
+3. Copiá la URL `https://….trycloudflare.com` y compartila.  
+   Login: `admin@musicalsniffle.com` / `admin123`
+
+> Mientras tu PC esté encendida y el túnel abierto, cualquiera puede entrar. Ideal para mostrar a alguien ahora.
+
+### Opción online — Render free (link que dura días)
+
+1. [Render Blueprints](https://dashboard.render.com/blueprints) → repo `musical-sniffle`.
+2. Deploy con el `render.yaml`.
+3. URL `https://….onrender.com` (se duerme sin uso; el 1.er click tarda ~1 min).
 
 ### Logins de demo (`APP_DEMO_DATA=true`)
 
@@ -92,7 +104,7 @@ Límites del free:
 | `admin@musicalsniffle.com` | `admin123` |
 | `operador.demo@musicalsniffle.com` | `demo123` |
 
-### Probar en tu PC (también gratis)
+### Probar solo en local (sin compartir)
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build

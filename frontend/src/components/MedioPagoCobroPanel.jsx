@@ -62,6 +62,7 @@ export default function MedioPagoCobroPanel({
           return (
             <Button
               key={value}
+              type="button"
               variant={selected ? 'contained' : 'outlined'}
               onClick={() => onMedioChange?.(value)}
               startIcon={<Icon size={18} />}
@@ -167,6 +168,7 @@ export default function MedioPagoCobroPanel({
             confirmar a mano).
           </Typography>
           <Button
+            type="button"
             variant="outlined"
             fullWidth
             onClick={onGenerarQr}

@@ -192,132 +192,143 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle
-        sx={{
-          pb: 1,
-          fontFamily: '"Oswald", "Inter", sans-serif',
-          fontWeight: 600,
-          letterSpacing: '0.03em',
-          textTransform: 'uppercase',
-          fontSize: '1.15rem',
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (listo) {
+            handleClose()
+            return
+          }
+          if (!loading && !loadingPreview && !esperandoQr) confirmar()
         }}
       >
-        {listo ? 'Egreso registrado' : 'Confirmar egreso'}
-      </DialogTitle>
-      <DialogContent sx={{ pt: '4px !important', pb: 1 }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError('')}>
-            {error}
-          </Alert>
-        )}
+        <DialogTitle
+          sx={{
+            pb: 1,
+            fontFamily: '"Oswald", "Inter", sans-serif',
+            fontWeight: 600,
+            letterSpacing: '0.03em',
+            textTransform: 'uppercase',
+            fontSize: '1.15rem',
+          }}
+        >
+          {listo ? 'Egreso registrado' : 'Confirmar egreso'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: '4px !important', pb: 1 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
 
-        {!listo && estadia && (
-          <Stack spacing={1.75} sx={{ pt: 0.5 }}>
-            <Box
-              sx={{
-                p: 1.25,
-                borderRadius: '6px',
-                bgcolor: colors.surfaceAlt,
-                border: `1px solid ${colors.border}`,
-              }}
-            >
-              <Typography className="mono" sx={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: 1.2 }}>
-                {estadia.patente}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
-                Plaza {estadia.plazaCodigo || 'Sin asignar'}
-                {abonado ? ' · Abonado (sin cobro)' : ''}
-              </Typography>
-              {estadia.ticket?.codigo && (
-                <Typography variant="caption" className="mono" color="text.secondary" display="block">
-                  Ticket ingreso {estadia.ticket.codigo}
-                </Typography>
-              )}
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Ingreso:{' '}
-                <Box component="span" className="mono" sx={{ fontWeight: 600 }}>
-                  {formatFechaHora(preview?.entrada || estadia.entrada) ||
-                    (loadingPreview ? '…' : '—')}
-                </Box>
-              </Typography>
-              <Typography
-                className="mono"
-                sx={{ mt: 0.75, fontWeight: 800, fontSize: '1.35rem', color: colors.primaryDark }}
-              >
-                {loadingPreview
-                  ? 'Calculando…'
-                  : abonado || monto === 0
-                    ? 'Sin cargo'
-                    : formatMoney(monto)}
-              </Typography>
-            </Box>
-
-            {requierePago && (
-              <MedioPagoCobroPanel
-                monto={monto}
-                medio={medio}
-                onMedioChange={(v) => {
-                  setMedio(v)
-                  setError('')
-                  setMpInfo(null)
+          {!listo && estadia && (
+            <Stack spacing={1.75} sx={{ pt: 0.5 }}>
+              <Box
+                sx={{
+                  p: 1.25,
+                  borderRadius: '6px',
+                  bgcolor: colors.surfaceAlt,
+                  border: `1px solid ${colors.border}`,
                 }}
-                pagoExacto={pagoExacto}
-                onPagoExactoChange={setPagoExacto}
-                montoRecibido={montoRecibido}
-                onMontoRecibidoChange={setMontoRecibido}
-                comprobante={comprobante}
-                onComprobanteChange={setComprobante}
-                mpInfo={mpInfo}
-                onGenerarQr={generarQr}
-                loadingMp={loadingMp}
-                esperandoPago={esperandoQr}
-              />
-            )}
-          </Stack>
-        )}
-
-        {listo && resultado && (
-          <Stack spacing={1} sx={{ pt: 0.5 }}>
-            <Alert severity="success">Salida registrada. No se imprime ticket de egreso.</Alert>
-            <Typography className="mono" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-              {resultado.patente}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {resultado.abonado || Number(resultado.monto) === 0
-                ? 'Sin cargo'
-                : `Cobrado ${formatMoney(resultado.monto)}`}
-            </Typography>
-          </Stack>
-        )}
-      </DialogContent>
-      <DialogActions sx={{ px: 2.5, pb: 2, pt: 1, gap: 1 }}>
-        {!listo ? (
-          <>
-            <Button onClick={handleClose} disabled={loading}>
-              {esperandoQr ? 'Cerrar' : 'Cancelar'}
-            </Button>
-            {!esperandoQr && (
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={confirmar}
-                disabled={loading || loadingPreview}
-                sx={{ minHeight: 40 }}
               >
-                {loading
-                  ? 'Procesando…'
-                  : abonado || !requierePago
-                    ? 'Confirmar salida'
-                    : 'Cobrar y egresar'}
+                <Typography className="mono" sx={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: 1.2 }}>
+                  {estadia.patente}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
+                  Plaza {estadia.plazaCodigo || 'Sin asignar'}
+                  {abonado ? ' · Abonado (sin cobro)' : ''}
+                </Typography>
+                {estadia.ticket?.codigo && (
+                  <Typography variant="caption" className="mono" color="text.secondary" display="block">
+                    Ticket ingreso {estadia.ticket.codigo}
+                  </Typography>
+                )}
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Ingreso:{' '}
+                  <Box component="span" className="mono" sx={{ fontWeight: 600 }}>
+                    {formatFechaHora(preview?.entrada || estadia.entrada) ||
+                      (loadingPreview ? '…' : '—')}
+                  </Box>
+                </Typography>
+                <Typography
+                  className="mono"
+                  sx={{ mt: 0.75, fontWeight: 800, fontSize: '1.35rem', color: colors.primaryDark }}
+                >
+                  {loadingPreview
+                    ? 'Calculando…'
+                    : abonado || monto === 0
+                      ? 'Sin cargo'
+                      : formatMoney(monto)}
+                </Typography>
+              </Box>
+
+              {requierePago && (
+                <MedioPagoCobroPanel
+                  monto={monto}
+                  medio={medio}
+                  onMedioChange={(v) => {
+                    setMedio(v)
+                    setError('')
+                    setMpInfo(null)
+                  }}
+                  pagoExacto={pagoExacto}
+                  onPagoExactoChange={setPagoExacto}
+                  montoRecibido={montoRecibido}
+                  onMontoRecibidoChange={setMontoRecibido}
+                  comprobante={comprobante}
+                  onComprobanteChange={setComprobante}
+                  mpInfo={mpInfo}
+                  onGenerarQr={generarQr}
+                  loadingMp={loadingMp}
+                  esperandoPago={esperandoQr}
+                />
+              )}
+            </Stack>
+          )}
+
+          {listo && resultado && (
+            <Stack spacing={1} sx={{ pt: 0.5 }}>
+              <Alert severity="success">Salida registrada. No se imprime ticket de egreso.</Alert>
+              <Typography className="mono" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                {resultado.patente}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {resultado.abonado || Number(resultado.monto) === 0
+                  ? 'Sin cargo'
+                  : `Cobrado ${formatMoney(resultado.monto)}`}
+              </Typography>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2, pt: 1, gap: 1 }}>
+          {!listo ? (
+            <>
+              <Button type="button" onClick={handleClose} disabled={loading}>
+                {esperandoQr ? 'Cerrar' : 'Cancelar'}
               </Button>
-            )}
-          </>
-        ) : (
-          <Button variant="contained" onClick={handleClose} sx={{ minHeight: 40 }}>
-            Listo
-          </Button>
-        )}
-      </DialogActions>
+              {!esperandoQr && (
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="secondary"
+                  disabled={loading || loadingPreview}
+                  sx={{ minHeight: 40 }}
+                >
+                  {loading
+                    ? 'Procesando…'
+                    : abonado || !requierePago
+                      ? 'Confirmar salida'
+                      : 'Cobrar y egresar'}
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button type="submit" variant="contained" sx={{ minHeight: 40 }}>
+              Listo
+            </Button>
+          )}
+        </DialogActions>
+      </form>
     </Dialog>
   )
 }

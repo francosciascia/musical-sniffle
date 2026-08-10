@@ -22,7 +22,7 @@ import TablePager from '../components/TablePager'
 import api from '../api/client'
 import { usePagedRows } from '../hooks/usePagedRows'
 import { getRol, isAdmin } from '../utils/auth'
-import { downloadCsv } from '../utils/exportCsv'
+import { downloadExcel } from '../utils/exportExcel'
 import { labelMedioPago } from '../utils/mediosPago'
 import { TIPOS_EVENTO, labelTipoEvento } from '../utils/eventos'
 import { colors } from '../theme/colors'
@@ -71,8 +71,8 @@ export default function HistorialPage() {
   }, [cargar])
 
   function exportHistorial() {
-    downloadCsv(
-      `historial_${desde || 'inicio'}_${hasta || 'hoy'}.csv`,
+    downloadExcel(
+      `historial_${desde || 'inicio'}_${hasta || 'hoy'}.xlsx`,
       ['Fecha', 'Evento', 'Descripcion', 'Usuario', 'Monto', 'MedioPago'],
       filtrados.map((e) => [
         e.fechaHora?.replace('T', ' ').slice(0, 19) || '',
@@ -82,13 +82,14 @@ export default function HistorialPage() {
         e.monto ?? '',
         e.medioPago || '',
       ]),
+      'Historial',
     )
   }
 
   function exportCaja() {
     const pagos = filtrados.filter((e) => e.tipoEvento === 'PAGO' || e.tipoEvento === 'PAGO_MENSUAL')
-    downloadCsv(
-      `caja_${desde || 'inicio'}_${hasta || 'hoy'}.csv`,
+    downloadExcel(
+      `caja_${desde || 'inicio'}_${hasta || 'hoy'}.xlsx`,
       ['Fecha', 'Tipo', 'Descripcion', 'Usuario', 'Monto', 'MedioPago'],
       pagos.map((e) => [
         e.fechaHora?.replace('T', ' ').slice(0, 19) || '',
@@ -98,6 +99,7 @@ export default function HistorialPage() {
         e.monto ?? '',
         labelMedioPago(e.medioPago),
       ]),
+      'Caja',
     )
   }
 
@@ -114,7 +116,7 @@ export default function HistorialPage() {
               onClick={exportHistorial}
               disabled={!filtrados.length}
             >
-              CSV historial
+              Excel historial
             </Button>
             <Button
               variant="outlined"
@@ -122,7 +124,7 @@ export default function HistorialPage() {
               onClick={exportCaja}
               disabled={!filtrados.some((e) => e.tipoEvento === 'PAGO' || e.tipoEvento === 'PAGO_MENSUAL')}
             >
-              CSV caja
+              Excel caja
             </Button>
           </>
         }

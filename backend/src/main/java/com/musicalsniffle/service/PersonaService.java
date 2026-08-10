@@ -12,6 +12,7 @@ import com.musicalsniffle.repository.ClienteRepository;
 import com.musicalsniffle.repository.OperadorRepository;
 import com.musicalsniffle.repository.PersonaRepository;
 import com.musicalsniffle.repository.SuperAdminRepository;
+import com.musicalsniffle.util.TextoNormalizer;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,8 +37,8 @@ public class PersonaService {
         String randomPassword = UUID.randomUUID() + UUID.randomUUID().toString();
 
         Cliente cliente = Cliente.builder()
-                .nombre(request.getNombre())
-                .apellido(request.getApellido())
+                .nombre(TextoNormalizer.capitalizarNombre(request.getNombre()))
+                .apellido(TextoNormalizer.capitalizarNombre(request.getApellido()))
                 .dni(request.getDni())
                 .email(request.getEmail())
                 .telefono(request.getTelefono())
@@ -55,8 +56,8 @@ public class PersonaService {
 
         validarDatosUnicosExcepto(id, request.getEmail(), request.getDni());
 
-        cliente.setNombre(request.getNombre().trim());
-        cliente.setApellido(request.getApellido().trim());
+        cliente.setNombre(TextoNormalizer.capitalizarNombre(request.getNombre()));
+        cliente.setApellido(TextoNormalizer.capitalizarNombre(request.getApellido()));
         cliente.setDni(request.getDni().trim());
         cliente.setEmail(request.getEmail().trim());
         cliente.setTelefono(request.getTelefono().trim());
@@ -73,8 +74,8 @@ public class PersonaService {
         }
 
         Operador operador = Operador.builder()
-                .nombre(request.getNombre())
-                .apellido(request.getApellido())
+                .nombre(TextoNormalizer.capitalizarNombre(request.getNombre()))
+                .apellido(TextoNormalizer.capitalizarNombre(request.getApellido()))
                 .dni(request.getDni())
                 .email(request.getEmail())
                 .telefono(request.getTelefono())
@@ -91,8 +92,8 @@ public class PersonaService {
         validarDatosUnicos(request.getEmail(), request.getDni());
 
         SuperAdmin superAdmin = SuperAdmin.builder()
-                .nombre(request.getNombre())
-                .apellido(request.getApellido())
+                .nombre(TextoNormalizer.capitalizarNombre(request.getNombre()))
+                .apellido(TextoNormalizer.capitalizarNombre(request.getApellido()))
                 .dni(request.getDni())
                 .email(request.getEmail())
                 .telefono(request.getTelefono())
