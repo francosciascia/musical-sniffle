@@ -69,32 +69,59 @@ Editá `application-local.yml`:
 
 `application-local.yml` **no se sube a Git**.
 
-## Publicar online (Render)
+## Publicar online
 
-La app se empaqueta en **un solo Docker** (frontend + API) con Postgres gestionado.
+La app va en **un solo Docker** (frontend + API). Elegí una plataforma:
 
-1. Subí estos cambios a GitHub (`main`).
-2. Entrá a [Render Blueprints](https://dashboard.render.com/blueprints) → **New Blueprint Instance**.
-3. Conectá el repo `francosciascia/musical-sniffle` (usa `render.yaml`).
-4. Aplicá el blueprint (Web free + Postgres free).
-5. Cuando el deploy termine, abrí la URL `https://musical-sniffle-….onrender.com`.
+### Opción A — Railway (recomendada si no querés Render)
 
-Logins de demo (con `APP_DEMO_DATA=true`):
+1. Entrá a [railway.app](https://railway.app) → login con GitHub.
+2. **New Project** → **Deploy from GitHub repo** → `musical-sniffle`.
+3. En el servicio que crea, confirmá que usa el `Dockerfile` de la raíz.
+4. **Add Plugin / Database** → **PostgreSQL**.
+5. En el servicio **app**, variables:
 
-| Usuario | Password |
-|---------|----------|
-| `admin@musicalsniffle.com` | `admin123` |
-| `operador.demo@musicalsniffle.com` | `demo123` |
+| Variable | Valor |
+|----------|--------|
+| `SPRING_PROFILES_ACTIVE` | `docker` |
+| `DB_HOST` | `${{Postgres.PGHOST}}` (o el host que te muestre Railway) |
+| `DB_PORT` | `${{Postgres.PGPORT}}` |
+| `DB_NAME` | `${{Postgres.PGDATABASE}}` |
+| `DB_USERNAME` | `${{Postgres.PGUSER}}` |
+| `DB_PASSWORD` | `${{Postgres.PGPASSWORD}}` |
+| `JWT_SECRET` | un string largo (≥ 32 chars) |
+| `APP_DEMO_DATA` | `true` |
+| `MP_ENABLED` | `false` |
 
-> El plan free de Render **duerme** tras inactividad (~1 min al despertar). El Postgres free tiene límite de días; para demo corta alcanza.
+En la UI de Railway, al referenciar el plugin Postgres, suelen aparecer como `PGHOST`, `PGPORT`, etc.: usá **Variable Reference** para no copiar secretos a mano.
 
-### Probar el mismo stack en tu PC
+6. **Settings → Networking → Generate Domain** → te da una URL pública `*.up.railway.app`.
+
+> Railway da crédito gratis mensual; si se acaba, el servicio se pausa hasta el próximo ciclo o hasta que cargues saldo.
+
+### Opción B — Render
+
+1. [Render Blueprints](https://dashboard.render.com/blueprints) → **New Blueprint Instance**.
+2. Conectá el repo (usa `render.yaml`).
+3. Aplicá el blueprint (Web free + Postgres free).
+4. URL `https://musical-sniffle-….onrender.com`.
+
+> El plan free **duerme** tras inactividad (~1 min al despertar).
+
+### Opción C — VPS / PC con Docker
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
 ```
 
-App: http://localhost:8080
+App: http://localhost:8080 (o la IP del VPS en el puerto 8080).
+
+### Logins de demo (`APP_DEMO_DATA=true`)
+
+| Usuario | Password |
+|---------|----------|
+| `admin@musicalsniffle.com` | `admin123` |
+| `operador.demo@musicalsniffle.com` | `demo123` |
 
 ### 3. Backend
 
