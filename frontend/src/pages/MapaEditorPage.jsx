@@ -361,15 +361,29 @@ export default function MapaEditorPage() {
     })
   }
 
-  function handleSelectPlazas(lista) {
-    setSelectedIds(lista.map((p) => p.id))
+  function handleSelectPlazas(lista, { additive } = {}) {
+    const ids = lista.map((p) => p.id)
+    if (!additive) {
+      setSelectedIds(ids)
+      return
+    }
+    setSelectedIds((prev) => {
+      const set = new Set(prev)
+      for (const id of ids) {
+        if (set.has(id)) set.delete(id)
+        else set.add(id)
+      }
+      return [...set]
+    })
   }
 
-  async function eliminarPlazas(lista) {
+  async function eliminarPlazas(lista, { confirm = true } = {}) {
     if (!lista?.length) return
-    const msg =
-      lista.length === 1 ? `¿Eliminar ${lista[0].codigo}?` : `¿Eliminar ${lista.length} lugares?`
-    if (!window.confirm(msg)) return
+    if (confirm) {
+      const msg =
+        lista.length === 1 ? `¿Eliminar ${lista[0].codigo}?` : `¿Eliminar ${lista.length} lugares?`
+      if (!window.confirm(msg)) return
+    }
     setError('')
     for (const plaza of lista) {
       try {
@@ -573,8 +587,11 @@ export default function MapaEditorPage() {
                 <ToggleButton value={HERRAMIENTA_PLAZAS.BORRAR}>Borrar</ToggleButton>
               </ToggleButtonGroup>
               <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
-                Solo sobre el Área de plazas (verde claro). Pasillos, entradas y obstáculos no admiten
-                lugares. Códigos: piso 1 → A1…, piso 2 → B1…
+                {herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR
+                  ? 'Arrastrá sobre los lugares tipados (uno o varios) para borrarlos. Sin confirmación en cada gesto.'
+                  : herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR
+                    ? 'Arrastrá para seleccionar varios. Shift/Ctrl suma o quita. Después usá Eliminar abajo.'
+                    : 'Solo sobre el Área de plazas (verde claro). Códigos: piso 1 → A1…, piso 2 → B1…'}
               </Typography>
             </Box>
           )}

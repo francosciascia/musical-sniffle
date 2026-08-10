@@ -12,14 +12,15 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
   Typography,
 } from '@mui/material'
-import { Car, Pencil, Plus, Search, Users } from 'lucide-react'
+import { Car, Pencil, Plus, Search } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
+import EmptyState from '../components/EmptyState'
+import PageHeader from '../components/PageHeader'
 import TablePager from '../components/TablePager'
 import api from '../api/client'
 import { usePagedRows } from '../hooks/usePagedRows'
@@ -178,28 +179,15 @@ export default function ClientesPage() {
 
   return (
     <AppLayout>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        alignItems={{ xs: 'stretch', sm: 'center' }}
-        justifyContent="space-between"
-        sx={{ mb: 2 }}
-      >
-        <Box>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Users size={22} color={colors.primary} />
-            <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-              Clientes
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            Alta, edición y autos para reservas.
-          </Typography>
-        </Box>
-        <Button variant="contained" startIcon={<Plus size={16} />} onClick={abrirNuevo}>
-          Nuevo cliente
-        </Button>
-      </Stack>
+      <PageHeader
+        title="Clientes"
+        subtitle="Alta, edición y autos para reservas."
+        actions={
+          <Button variant="contained" startIcon={<Plus size={16} />} onClick={abrirNuevo}>
+            Nuevo cliente
+          </Button>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
@@ -228,29 +216,36 @@ export default function ClientesPage() {
         }}
       />
 
-      <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 700 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Nombre</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>DNI</TableCell>
-              <TableCell>Teléfono</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell align="right">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {count === 0 ? (
+      {count === 0 ? (
+        <EmptyState
+          message={
+            clientes.length ? 'Sin resultados para esa búsqueda.' : 'Todavía no hay clientes.'
+          }
+          actionLabel={clientes.length ? undefined : 'Nuevo cliente'}
+          onAction={clientes.length ? undefined : abrirNuevo}
+        />
+      ) : (
+        <Box
+          sx={{
+            border: `1px solid ${colors.border}`,
+            borderRadius: '6px',
+            overflow: 'auto',
+            bgcolor: colors.surface,
+          }}
+        >
+          <Table size="small" sx={{ minWidth: 700 }}>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={6}>
-                  <Typography variant="body2" color="text.secondary">
-                    {clientes.length ? 'Sin resultados.' : 'Todavía no hay clientes. Creá el primero.'}
-                  </Typography>
-                </TableCell>
+                <TableCell>Nombre</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>DNI</TableCell>
+                <TableCell>Teléfono</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell align="right">Acciones</TableCell>
               </TableRow>
-            ) : (
-              paged.map((c) => (
+            </TableHead>
+            <TableBody>
+              {paged.map((c) => (
                 <TableRow key={c.id} hover>
                   <TableCell>
                     {c.nombre} {c.apellido}
@@ -277,18 +272,18 @@ export default function ClientesPage() {
                     </Stack>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <TablePager
-          count={count}
-          page={page}
-          rowsPerPage={rowsPerPage}
-          onPageChange={setPage}
-          onRowsPerPageChange={setRowsPerPage}
-        />
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+          <TablePager
+            count={count}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={setRowsPerPage}
+          />
+        </Box>
+      )}
 
       <Dialog
         open={open}

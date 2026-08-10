@@ -136,10 +136,33 @@ export default function AppLayout({ children, variant = 'page', maxWidth = 1200 
             </IconButton>
           )}
 
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ minWidth: 0, flex: isMobile ? 1 : 'none', mr: isMobile ? 0 : 1 }}>
-            <ParkingSquare size={20} strokeWidth={2.25} />
+          <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0, flex: isMobile ? 1 : 'none', mr: isMobile ? 0 : 1.5 }}>
+            <Box
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: '4px',
+                bgcolor: colors.accent,
+                color: colors.primaryDark,
+                display: 'grid',
+                placeItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <ParkingSquare size={16} strokeWidth={2.5} />
+            </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', lineHeight: 1.2 }} noWrap>
+              <Typography
+                sx={{
+                  fontFamily: '"Oswald", "Inter", sans-serif',
+                  fontWeight: 700,
+                  fontSize: '1.05rem',
+                  lineHeight: 1.1,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}
+                noWrap
+              >
                 Musical Sniffle
               </Typography>
               <Typography sx={{ fontSize: '0.7rem', opacity: 0.8, lineHeight: 1.2 }} noWrap>
@@ -266,24 +289,14 @@ export default function AppLayout({ children, variant = 'page', maxWidth = 1200 
         <Box
           sx={{
             flex: 1,
-            p: { xs: 1.25, sm: 2 },
+            p: { xs: 1.5, sm: 2.25 },
             maxWidth: maxWidth === 'xl' ? 1400 : maxWidth,
             width: '100%',
             mx: 'auto',
             boxSizing: 'border-box',
           }}
         >
-          <Box
-            sx={{
-              bgcolor: 'background.paper',
-              border: `1px solid ${colors.border}`,
-              borderRadius: '6px',
-              p: { xs: 1.25, sm: 2 },
-              overflowX: 'auto',
-            }}
-          >
-            {children}
-          </Box>
+          {children}
         </Box>
       )}
     </Box>

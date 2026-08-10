@@ -15,7 +15,9 @@ import {
 } from '@mui/material'
 import { ArrowUpFromLine, Search } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
+import EmptyState from '../components/EmptyState'
 import EgresoDialog from '../components/EgresoDialog'
+import PageHeader from '../components/PageHeader'
 import TablePager from '../components/TablePager'
 import api from '../api/client'
 import { usePagedRows } from '../hooks/usePagedRows'
@@ -75,9 +77,10 @@ export default function EstadiasPage() {
 
   return (
     <AppLayout>
-      <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-        Estadías activas
-      </Typography>
+      <PageHeader
+        title="Estadías activas"
+        subtitle="Vehículos en el predio. Egresá desde la tabla o buscando patente/ticket."
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
@@ -85,15 +88,7 @@ export default function EstadiasPage() {
         </Alert>
       )}
 
-      <Box
-        sx={{
-          p: 1.5,
-          mb: 2,
-          border: `1px solid ${colors.border}`,
-          borderRadius: '6px',
-          bgcolor: colors.surfaceAlt,
-        }}
-      >
+      <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
           Buscar por patente o ticket
         </Typography>
@@ -181,66 +176,70 @@ export default function EstadiasPage() {
         )}
       </Box>
 
-      <Box sx={{ border: `1px solid ${colors.border}`, borderRadius: '6px', overflow: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 480 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Patente</TableCell>
-              <TableCell>Plaza</TableCell>
-              <TableCell>Ticket</TableCell>
-              <TableCell>Abonado</TableCell>
-              <TableCell align="right">Acción</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading && (
+      {!loading && count === 0 ? (
+        <EmptyState message="No hay vehículos estacionados. Registrá un ingreso desde el mapa." />
+      ) : (
+        <Box
+          sx={{
+            border: `1px solid ${colors.border}`,
+            borderRadius: '6px',
+            overflow: 'auto',
+            bgcolor: colors.surface,
+          }}
+        >
+          <Table size="small" sx={{ minWidth: 480 }}>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={5} align="center">
-                  Cargando…
-                </TableCell>
+                <TableCell>Patente</TableCell>
+                <TableCell>Plaza</TableCell>
+                <TableCell>Ticket</TableCell>
+                <TableCell>Abonado</TableCell>
+                <TableCell align="right">Acción</TableCell>
               </TableRow>
-            )}
-            {!loading && count === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No hay vehículos estacionados
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading &&
-              paged.map((e) => (
-              <TableRow key={e.id} hover>
-                <TableCell>
-                  <span className="mono">{e.patente}</span>
-                </TableCell>
-                <TableCell>{e.plazaCodigo || '—'}</TableCell>
-                <TableCell>
-                  <span className="mono">{e.ticket?.codigo}</span>
-                </TableCell>
-                <TableCell>{e.abonado ? 'Sí' : 'No'}</TableCell>
-                <TableCell align="right">
-                  <Button
-                    size="small"
-                    color="secondary"
-                    variant="contained"
-                    startIcon={<ArrowUpFromLine size={14} />}
-                    onClick={() => setEgresoTarget(e)}
-                  >
-                    Egreso
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <TablePager
-          count={count}
-          page={page}
-          rowsPerPage={rowsPerPage}
-          onPageChange={setPage}
-          onRowsPerPageChange={setRowsPerPage}
-        />
-      </Box>
+            </TableHead>
+            <TableBody>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    Cargando…
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading &&
+                paged.map((e) => (
+                  <TableRow key={e.id} hover>
+                    <TableCell>
+                      <span className="mono">{e.patente}</span>
+                    </TableCell>
+                    <TableCell>{e.plazaCodigo || '—'}</TableCell>
+                    <TableCell>
+                      <span className="mono">{e.ticket?.codigo}</span>
+                    </TableCell>
+                    <TableCell>{e.abonado ? 'Sí' : 'No'}</TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        color="secondary"
+                        variant="contained"
+                        startIcon={<ArrowUpFromLine size={14} />}
+                        onClick={() => setEgresoTarget(e)}
+                      >
+                        Egreso
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+          <TablePager
+            count={count}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={setRowsPerPage}
+          />
+        </Box>
+      )}
 
       <EgresoDialog
         open={!!egresoTarget}

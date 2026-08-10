@@ -100,28 +100,39 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
     <>
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <form onSubmit={handleSubmit}>
-          <DialogTitle sx={{ pb: 1 }}>
+          <DialogTitle
+            sx={{
+              pb: 1,
+              fontFamily: '"Oswald", "Inter", sans-serif',
+              fontWeight: 600,
+              letterSpacing: '0.03em',
+              textTransform: 'uppercase',
+              fontSize: '1.15rem',
+            }}
+          >
             {plazaElegida ? `Ingreso · Plaza ${plazaElegida.codigo}` : 'Registrar ingreso'}
-            {plazaElegida?.reservada && (
-              <Typography variant="body2" color="warning.main" sx={{ mt: 0.5, fontWeight: 500 }}>
-                Plaza reservada
-                {plazaElegida.reservaCliente ? ` · ${plazaElegida.reservaCliente}` : ''}
-              </Typography>
-            )}
-            {!plazaElegida && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 400 }}>
-                Patente y modelo. La plaza es opcional (podés elegirla en el mapa).
-              </Typography>
-            )}
           </DialogTitle>
           <DialogContent
             sx={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 1.5,
-              pt: '16px !important',
+              gap: 1.75,
+              pt: '8px !important',
+              pb: 1,
             }}
           >
+            {plazaElegida?.reservada && (
+              <Alert severity="warning" sx={{ py: 0.5 }}>
+                Plaza reservada
+                {plazaElegida.reservaCliente ? ` · ${plazaElegida.reservaCliente}` : ''}
+              </Alert>
+            )}
+            {!plazaElegida && (
+              <Typography variant="body2" color="text.secondary">
+                Patente y modelo. La plaza es opcional (mapa).
+              </Typography>
+            )}
+
             {error && <Alert severity="error">{error}</Alert>}
 
             <Stack direction="row" spacing={1} alignItems="flex-start">
@@ -161,7 +172,7 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
               </Button>
             </Stack>
             {plazaElegida && (
-              <Button size="small" onClick={() => setPlazaElegida(null)} sx={{ alignSelf: 'flex-start' }}>
+              <Button size="small" onClick={() => setPlazaElegida(null)} sx={{ alignSelf: 'flex-start', mt: -0.5 }}>
                 Quitar plaza
               </Button>
             )}
@@ -191,7 +202,7 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
               ))}
             </TextField>
           </DialogContent>
-          <DialogActions sx={{ px: 2, pb: 2 }}>
+          <DialogActions sx={{ px: 2.5, pb: 2, pt: 1, gap: 1 }}>
             <Button onClick={handleClose} disabled={loading}>
               Cancelar
             </Button>
@@ -200,6 +211,7 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
               variant="contained"
               disabled={loading}
               startIcon={<ArrowDownToLine size={16} />}
+              sx={{ minHeight: 40 }}
             >
               {loading ? 'Registrando…' : 'Confirmar ingreso'}
             </Button>

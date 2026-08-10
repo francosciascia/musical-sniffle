@@ -63,6 +63,7 @@ function DraggablePlaza({
   onSelect,
   selected,
   draggable,
+  listening = true,
   grid,
 }) {
   const m = plazaMetrics(grid.cell)
@@ -81,6 +82,7 @@ function DraggablePlaza({
         stroke={selected ? colors.accent : colors.primaryDark}
         strokeWidth={selected ? 3 : 2}
         draggable={draggable}
+        listening={listening}
         onMouseDown={(e) => {
           e.cancelBubble = true
         }}
@@ -144,12 +146,20 @@ export default function MapGridEditor({
   const selectingRef = useRef(false)
   const selStartRef = useRef(null)
   const selEndRef = useRef(null)
+  const additiveRef = useRef(false)
   const [selStart, setSelStart] = useState(null)
   const [selEnd, setSelEnd] = useState(null)
   const { width, height } = editorStageSize(grid)
 
   const plazasPiso = plazas.filter((p) => p.piso === piso)
   const selectedSet = new Set(selectedIds)
+
+  /** En Borrar/Seleccionar el arrastre debe pasar por encima de lugares ya tipados. */
+  const plazasListening = mode !== 'plazas' || herramientaPlazas === HERRAMIENTA_PLAZAS.CREAR
+  const rubberBandOverPlazas =
+    mode === 'plazas' &&
+    (herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR ||
+      herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR)
 
   const plazasByCell = useRef(new Map())
   plazasByCell.current = new Map(
@@ -158,9 +168,13 @@ export default function MapGridEditor({
 
   function plazasEnCeldas(cells) {
     const found = []
+    const seen = new Set()
     for (const c of cells) {
       const plaza = plazasByCell.current.get(cellKey(c.col, c.row))
-      if (plaza) found.push(plaza)
+      if (plaza && !seen.has(plaza.id)) {
+        seen.add(plaza.id)
+        found.push(plaza)
+      }
     }
     return found
   }
@@ -170,7 +184,9 @@ export default function MapGridEditor({
 
     selectingRef.current = false
     const start = selStartRef.current
+    const additive = additiveRef.current
     selStartRef.current = null
+    additiveRef.current = false
     setSelStart(null)
     setSelEnd(null)
 
@@ -184,12 +200,12 @@ export default function MapGridEditor({
     const existentes = plazasEnCeldas(allCells)
 
     if (herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR) {
-      if (existentes.length > 0) onDeletePlazas?.(existentes)
+      if (existentes.length > 0) onDeletePlazas?.(existentes, { confirm: false })
       return
     }
 
     if (herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR) {
-      onSelectPlazas?.(existentes)
+      onSelectPlazas?.(existentes, { additive })
       return
     }
 
@@ -211,6 +227,9 @@ export default function MapGridEditor({
     const stage = e.target.getStage()
     const pointer = stage.getPointerPosition()
     if (!pointer) return
+
+    const evt = e.evt
+    additiveRef.current = !!(evt?.shiftKey || evt?.ctrlKey || evt?.metaKey)
 
     const cell = cellFromPointer(pointer.x, pointer.y, gridRef.current)
     selectingRef.current = true
@@ -250,7 +269,7 @@ export default function MapGridEditor({
 
   function handlePlazaClick(plaza, { multi }) {
     if (herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR) {
-      onDeletePlazas?.([plaza])
+      onDeletePlazas?.([plaza], { confirm: false })
       return
     }
     onSelectPlaza?.(plaza, { multi: multi || herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR })
@@ -260,17 +279,36 @@ export default function MapGridEditor({
     mode === 'forma'
       ? `PISO ${piso} — dibujar estructura · ${grid.cols}×${grid.rows}`
       : herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR
-        ? `PISO ${piso} — borrar plazas · ${grid.cols}×${grid.rows}`
+        ? `PISO ${piso} — arrastrá para borrar · ${grid.cols}×${grid.rows}`
         : herramientaPlazas === HERRAMIENTA_PLAZAS.SELECCIONAR
-          ? `PISO ${piso} — seleccionar · ${grid.cols}×${grid.rows}`
+          ? `PISO ${piso} — arrastrá para seleccionar · ${grid.cols}×${grid.rows}`
           : `PISO ${piso} — colocar plazas · ${grid.cols}×${grid.rows}`
 
   const allowDrag = herramientaPlazas === HERRAMIENTA_PLAZAS.CREAR
+
+  const hitArea = (
+    <Rect
+      x={grid.pad}
+      y={grid.pad}
+      width={grid.cols * grid.cell}
+      height={grid.rows * grid.cell}
+      fill="transparent"
+      onMouseDown={handleSelectStart}
+      onTouchStart={handleSelectStart}
+    />
+  )
 
   return (
     <Stage
       width={width}
       height={height}
+      style={{
+        cursor: rubberBandOverPlazas
+          ? herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR
+            ? 'crosshair'
+            : 'cell'
+          : 'default',
+      }}
       onMouseMove={handleSelectMove}
       onMouseUp={handleSelectEnd}
       onTouchMove={handleSelectMove}
@@ -286,18 +324,15 @@ export default function MapGridEditor({
           text={titulo}
           fontSize={13}
           fontStyle="bold"
-          fill={colors.primary}
+          fill={
+            herramientaPlazas === HERRAMIENTA_PLAZAS.BORRAR && mode === 'plazas'
+              ? colors.ocupada
+              : colors.primary
+          }
           listening={false}
         />
-        <Rect
-          x={grid.pad}
-          y={grid.pad}
-          width={grid.cols * grid.cell}
-          height={grid.rows * grid.cell}
-          fill="transparent"
-          onMouseDown={handleSelectStart}
-          onTouchStart={handleSelectStart}
-        />
+        {/* Debajo de plazas en Crear; encima en Borrar/Seleccionar para arrastrar sobre tipados */}
+        {!rubberBandOverPlazas && hitArea}
         <SelectionRect
           start={selStart}
           end={selEnd}
@@ -313,11 +348,13 @@ export default function MapGridEditor({
               celdasForma={celdasForma}
               selected={selectedSet.has(plaza.id)}
               draggable={allowDrag}
+              listening={plazasListening}
               grid={grid}
               onSelect={handlePlazaClick}
               onDragEnd={onPlazaMove}
             />
           ))}
+        {rubberBandOverPlazas && hitArea}
       </Layer>
     </Stage>
   )

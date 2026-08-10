@@ -1,0 +1,22 @@
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:musical_sniffle}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+
+  jpa:
+    show-sql: false
+
+app:
+  demo-data: ${APP_DEMO_DATA:true}
+  jwt:
+    secret: ${JWT_SECRET}
+  mercadopago:
+    enabled: ${MP_ENABLED:false}
+    access-token: ${MP_ACCESS_TOKEN:}
+    sandbox: ${MP_SANDBOX:true}
+    notification-url: ${MP_NOTIFICATION_URL:}

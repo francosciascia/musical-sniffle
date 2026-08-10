@@ -1,0 +1,22 @@
+# Uso: docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
+services:
+  app:
+    build: .
+    container_name: musical-sniffle-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: musical_sniffle
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: ${JWT_SECRET:-musical-sniffle-docker-jwt-secret-change-me-32chars}
+      APP_DEMO_DATA: ${APP_DEMO_DATA:-true}
+      MP_ENABLED: ${MP_ENABLED:-false}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_SANDBOX: ${MP_SANDBOX:-true}
+      SERVER_PORT: 8080
+    depends_on:
+      - postgres

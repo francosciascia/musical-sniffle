@@ -38,6 +38,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/webhooks/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR")
@@ -49,9 +50,12 @@ public class SecurityConfig {
                                 "/api/estadias/**",
                                 "/api/tickets",
                                 "/api/tickets/**")
-                                .hasAnyRole("USUARIO", "ADMINISTRADOR")
+                        .hasAnyRole("USUARIO", "ADMINISTRADOR")
                         .requestMatchers("/api/auth/me").authenticated()
-                        .anyRequest().denyAll())
+                        .requestMatchers("/api/**").denyAll()
+                        // Frontend estático + rutas SPA (mismo origen en Docker/prod)
+                        .anyRequest()
+                        .permitAll())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(
                         new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

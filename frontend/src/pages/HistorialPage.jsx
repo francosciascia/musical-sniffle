@@ -4,12 +4,10 @@ import {
   Box,
   Button,
   MenuItem,
-  Paper,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -18,6 +16,8 @@ import {
 import { Download } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import DateField from '../components/DateField'
+import EmptyState from '../components/EmptyState'
+import PageHeader from '../components/PageHeader'
 import TablePager from '../components/TablePager'
 import api from '../api/client'
 import { usePagedRows } from '../hooks/usePagedRows'
@@ -25,6 +25,7 @@ import { getRol, isAdmin } from '../utils/auth'
 import { downloadCsv } from '../utils/exportCsv'
 import { labelMedioPago } from '../utils/mediosPago'
 import { TIPOS_EVENTO, labelTipoEvento } from '../utils/eventos'
+import { colors } from '../theme/colors'
 
 export default function HistorialPage() {
   const rol = getRol()
@@ -102,37 +103,32 @@ export default function HistorialPage() {
 
   return (
     <AppLayout maxWidth="xl">
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.5}
-        alignItems={{ xs: 'stretch', sm: 'center' }}
-        justifyContent="space-between"
-        sx={{ mb: 2 }}
-      >
-        <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-          Historial de eventos
-        </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Button
-            variant="outlined"
-            startIcon={<Download size={16} />}
-            onClick={exportHistorial}
-            disabled={!filtrados.length}
-          >
-            CSV historial
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<Download size={16} />}
-            onClick={exportCaja}
-            disabled={!filtrados.some((e) => e.tipoEvento === 'PAGO' || e.tipoEvento === 'PAGO_MENSUAL')}
-          >
-            CSV caja
-          </Button>
-        </Stack>
-      </Stack>
+      <PageHeader
+        title="Historial"
+        subtitle="Eventos del predio y movimientos de caja."
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              startIcon={<Download size={16} />}
+              onClick={exportHistorial}
+              disabled={!filtrados.length}
+            >
+              CSV historial
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Download size={16} />}
+              onClick={exportCaja}
+              disabled={!filtrados.some((e) => e.tipoEvento === 'PAGO' || e.tipoEvento === 'PAGO_MENSUAL')}
+            >
+              CSV caja
+            </Button>
+          </>
+        }
+      />
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Stack direction="row" spacing={1.5} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap alignItems="center">
         <DateField
           label="Desde"
           size="small"
@@ -159,18 +155,16 @@ export default function HistorialPage() {
             </MenuItem>
           ))}
         </TextField>
-        <Button variant="outlined" onClick={cargar}>
+        <Button variant="contained" onClick={cargar}>
           Filtrar
         </Button>
-      </Box>
+      </Stack>
 
       {admin && totales && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography variant="subtitle2">
-            Totales del período: Pagos ${totales.totalPagos} · Mensuales ${totales.totalPagosMensuales} ·
-            General ${totales.totalGeneral}
-          </Typography>
-        </Paper>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Totales del período: Pagos ${totales.totalPagos} · Mensuales ${totales.totalPagosMensuales} ·
+          General ${totales.totalGeneral}
+        </Typography>
       )}
 
       {error && (
@@ -179,46 +173,52 @@ export default function HistorialPage() {
         </Alert>
       )}
 
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 640 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Fecha</TableCell>
-              <TableCell>Evento</TableCell>
-              <TableCell>Descripción</TableCell>
-              <TableCell>Usuario</TableCell>
-              <TableCell>Medio</TableCell>
-              <TableCell align="right">Monto</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {count === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  Sin eventos{tipo ? ` de tipo “${labelTipoEvento(tipo)}”` : ''} en el período
-                </TableCell>
-              </TableRow>
-            )}
-            {paged.map((e) => (
-              <TableRow key={e.id}>
-                <TableCell>{e.fechaHora?.replace('T', ' ').slice(0, 16)}</TableCell>
-                <TableCell>{labelTipoEvento(e.tipoEvento)}</TableCell>
-                <TableCell>{e.descripcion}</TableCell>
-                <TableCell>{e.personaEmail || '—'}</TableCell>
-                <TableCell>{labelMedioPago(e.medioPago)}</TableCell>
-                <TableCell align="right">{e.monto != null ? `$${e.monto}` : '—'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <TablePager
-          count={count}
-          page={page}
-          rowsPerPage={rowsPerPage}
-          onPageChange={setPage}
-          onRowsPerPageChange={setRowsPerPage}
+      {count === 0 ? (
+        <EmptyState
+          message={`Sin eventos${tipo ? ` de tipo “${labelTipoEvento(tipo)}”` : ''} en el período.`}
         />
-      </TableContainer>
+      ) : (
+        <Box
+          sx={{
+            border: `1px solid ${colors.border}`,
+            borderRadius: '6px',
+            overflow: 'auto',
+            bgcolor: colors.surface,
+          }}
+        >
+          <Table size="small" sx={{ minWidth: 640 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Fecha</TableCell>
+                <TableCell>Evento</TableCell>
+                <TableCell>Descripción</TableCell>
+                <TableCell>Usuario</TableCell>
+                <TableCell>Medio</TableCell>
+                <TableCell align="right">Monto</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paged.map((e) => (
+                <TableRow key={e.id} hover>
+                  <TableCell>{e.fechaHora?.replace('T', ' ').slice(0, 16)}</TableCell>
+                  <TableCell>{labelTipoEvento(e.tipoEvento)}</TableCell>
+                  <TableCell>{e.descripcion}</TableCell>
+                  <TableCell>{e.personaEmail || '—'}</TableCell>
+                  <TableCell>{labelMedioPago(e.medioPago)}</TableCell>
+                  <TableCell align="right">{e.monto != null ? `$${e.monto}` : '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <TablePager
+            count={count}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={setRowsPerPage}
+          />
+        </Box>
+      )}
     </AppLayout>
   )
 }

@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material'
 import api from '../api/client'
+import { colors } from '../theme/colors'
 import MedioPagoCobroPanel, {
   buildCobroBody,
   formatMoney,
@@ -191,8 +192,19 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{listo ? 'Egreso registrado' : 'Confirmar egreso'}</DialogTitle>
-      <DialogContent sx={{ pt: '12px !important' }}>
+      <DialogTitle
+        sx={{
+          pb: 1,
+          fontFamily: '"Oswald", "Inter", sans-serif',
+          fontWeight: 600,
+          letterSpacing: '0.03em',
+          textTransform: 'uppercase',
+          fontSize: '1.15rem',
+        }}
+      >
+        {listo ? 'Egreso registrado' : 'Confirmar egreso'}
+      </DialogTitle>
+      <DialogContent sx={{ pt: '4px !important', pb: 1 }}>
         {error && (
           <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError('')}>
             {error}
@@ -200,12 +212,19 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
         )}
 
         {!listo && estadia && (
-          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
-            <Box>
-              <Typography className="mono" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+          <Stack spacing={1.75} sx={{ pt: 0.5 }}>
+            <Box
+              sx={{
+                p: 1.25,
+                borderRadius: '6px',
+                bgcolor: colors.surfaceAlt,
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              <Typography className="mono" sx={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: 1.2 }}>
                 {estadia.patente}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
                 Plaza {estadia.plazaCodigo || 'Sin asignar'}
                 {abonado ? ' · Abonado (sin cobro)' : ''}
               </Typography>
@@ -214,14 +233,17 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
                   Ticket ingreso {estadia.ticket.codigo}
                 </Typography>
               )}
-              <Typography variant="body2" sx={{ mt: 0.75 }}>
+              <Typography variant="body2" sx={{ mt: 1 }}>
                 Ingreso:{' '}
                 <Box component="span" className="mono" sx={{ fontWeight: 600 }}>
                   {formatFechaHora(preview?.entrada || estadia.entrada) ||
                     (loadingPreview ? '…' : '—')}
                 </Box>
               </Typography>
-              <Typography className="mono" sx={{ mt: 0.5, fontWeight: 700, fontSize: '1.15rem' }}>
+              <Typography
+                className="mono"
+                sx={{ mt: 0.75, fontWeight: 800, fontSize: '1.35rem', color: colors.primaryDark }}
+              >
                 {loadingPreview
                   ? 'Calculando…'
                   : abonado || monto === 0
@@ -255,9 +277,9 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
         )}
 
         {listo && resultado && (
-          <Stack spacing={0.75} sx={{ pt: 0.5 }}>
+          <Stack spacing={1} sx={{ pt: 0.5 }}>
             <Alert severity="success">Salida registrada. No se imprime ticket de egreso.</Alert>
-            <Typography className="mono" sx={{ fontWeight: 700 }}>
+            <Typography className="mono" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
               {resultado.patente}
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -268,7 +290,7 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
           </Stack>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 2, pb: 2 }}>
+      <DialogActions sx={{ px: 2.5, pb: 2, pt: 1, gap: 1 }}>
         {!listo ? (
           <>
             <Button onClick={handleClose} disabled={loading}>
@@ -280,6 +302,7 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
                 color="secondary"
                 onClick={confirmar}
                 disabled={loading || loadingPreview}
+                sx={{ minHeight: 40 }}
               >
                 {loading
                   ? 'Procesando…'
@@ -290,7 +313,7 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
             )}
           </>
         ) : (
-          <Button variant="contained" onClick={handleClose}>
+          <Button variant="contained" onClick={handleClose} sx={{ minHeight: 40 }}>
             Listo
           </Button>
         )}

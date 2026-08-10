@@ -6,6 +6,8 @@ spring:
     password: "TU_PASSWORD_DE_POSTGRES"
 
 app:
+  # true = carga operador/clientes/estadías de prueba al arrancar (solo si aún no existen)
+  demo-data: true
   jwt:
     # Mínimo 32 caracteres, distinto en cada entorno
     secret: "cambia-este-jwt-secret-local-minimo-32-chars!!"

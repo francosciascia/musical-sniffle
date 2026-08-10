@@ -20,14 +20,15 @@ public class PlazaDataInitializer implements CommandLineRunner {
             return;
         }
 
-        for (int i = 1; i <= 10; i++) {
+        // 30 plazas piso 1 (6×5) — espacio para abonos + visitas de demo
+        for (int i = 1; i <= 30; i++) {
             int index = i - 1;
             plazaRepository.save(Plaza.builder()
                     .codigo("A" + i)
                     .activa(true)
                     .piso(1)
-                    .posX(index % 5)
-                    .posY(index / 5)
+                    .posX(index % 6)
+                    .posY(index / 6)
                     .build());
         }
     }

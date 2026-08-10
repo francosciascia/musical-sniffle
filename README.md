@@ -69,6 +69,33 @@ Editá `application-local.yml`:
 
 `application-local.yml` **no se sube a Git**.
 
+## Publicar online (Render)
+
+La app se empaqueta en **un solo Docker** (frontend + API) con Postgres gestionado.
+
+1. Subí estos cambios a GitHub (`main`).
+2. Entrá a [Render Blueprints](https://dashboard.render.com/blueprints) → **New Blueprint Instance**.
+3. Conectá el repo `francosciascia/musical-sniffle` (usa `render.yaml`).
+4. Aplicá el blueprint (Web free + Postgres free).
+5. Cuando el deploy termine, abrí la URL `https://musical-sniffle-….onrender.com`.
+
+Logins de demo (con `APP_DEMO_DATA=true`):
+
+| Usuario | Password |
+|---------|----------|
+| `admin@musicalsniffle.com` | `admin123` |
+| `operador.demo@musicalsniffle.com` | `demo123` |
+
+> El plan free de Render **duerme** tras inactividad (~1 min al despertar). El Postgres free tiene límite de días; para demo corta alcanza.
+
+### Probar el mismo stack en tu PC
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
+```
+
+App: http://localhost:8080
+
 ### 3. Backend
 
 ```powershell
@@ -97,6 +124,27 @@ npm run dev
 | `admin@musicalsniffle.com` | `admin123` | Administrador |
 
 Se crea solo al primer arranque (`AdminDataInitializer`). Cambiá esa clave en cuanto no sea solo local.
+
+### Datos de prueba (local)
+
+Con `app.demo-data: true` en `application-local.yml`, al arrancar se carga un **lote grande** (una sola vez):
+
+| Qué | Cantidad / detalle |
+|-----|--------------------|
+| Operadores | `operador.demo@…` y `operador2.demo@…` / `demo123` |
+| Clientes | 12 fichas (`juan.perez@demo.com`, `maria.lopez@demo.com`, …) |
+| Abonos | 10 activos en plazas **A1–A10** (algunos por vencer) |
+| Autos | ~30 (abonados + 2.º vehículo + visitantes `VV…`) |
+| Estadías | ~5 abonados + ~8 visitas abiertas (con tiempo para probar cobro) |
+| Plazas | Asegura **A1–A30** si faltan |
+
+| Login | Password |
+|-------|----------|
+| `admin@musicalsniffle.com` | `admin123` |
+| `operador.demo@musicalsniffle.com` | `demo123` |
+| `operador2.demo@musicalsniffle.com` | `demo123` |
+
+Si ya corriste el demo chico, al reiniciar se completa el lote grande. Para regenerar todo de cero: base limpia o borrá el marcador `seed.lote-grande@demo.com` y los datos demo.
 
 ## Qué hace el sistema
 

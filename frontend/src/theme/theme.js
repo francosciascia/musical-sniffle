@@ -36,8 +36,8 @@ export const appTheme = createTheme({
   },
   typography: {
     fontFamily: '"Inter", system-ui, sans-serif',
-    h5: { fontWeight: 600, fontSize: '1.15rem', letterSpacing: '-0.01em' },
-    h6: { fontWeight: 600, fontSize: '0.95rem' },
+    h5: { fontWeight: 600, fontSize: '1.2rem', letterSpacing: '-0.01em' },
+    h6: { fontWeight: 600, fontSize: '1rem' },
     subtitle1: { fontWeight: 600, fontSize: '0.875rem' },
     subtitle2: {
       fontWeight: 600,

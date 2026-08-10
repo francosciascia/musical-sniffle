@@ -9,14 +9,12 @@ import {
   DialogContent,
   DialogTitle,
   MenuItem,
-  Paper,
   Stack,
   Tab,
   Tabs,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -26,11 +24,14 @@ import { MapPin } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import AppLayout from '../components/AppLayout'
 import DateField from '../components/DateField'
+import EmptyState from '../components/EmptyState'
+import PageHeader from '../components/PageHeader'
 import PagoAbonoDialog from '../components/PagoAbonoDialog'
 import PlazaMapPickerDialog from '../components/PlazaMapPickerDialog'
 import TablePager from '../components/TablePager'
 import api from '../api/client'
 import { usePagedRows } from '../hooks/usePagedRows'
+import { colors } from '../theme/colors'
 
 const ESTADOS = ['ACTIVA', 'SUSPENDIDA', 'VENCIDA', 'CANCELADA']
 
@@ -237,28 +238,15 @@ export default function ReservasPage() {
 
   return (
     <AppLayout maxWidth="xl">
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 1.5,
-          justifyContent: 'space-between',
-          alignItems: { xs: 'stretch', sm: 'center' },
-          mb: 1,
-        }}
-      >
-        <Box>
-          <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-            Abonos (lugar fijo)
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Cliente + plaza + patentes. Registrá el pago indicando cómo cobraste.
-          </Typography>
-        </Box>
-        <Button variant="contained" onClick={() => setDialogOpen(true)}>
-          Nuevo abono
-        </Button>
-      </Box>
+      <PageHeader
+        title="Abonos"
+        subtitle="Cliente + plaza fija + patentes. Registrá el pago indicando cómo cobraste."
+        actions={
+          <Button variant="contained" onClick={() => setDialogOpen(true)}>
+            Nuevo abono
+          </Button>
+        }
+      />
 
       <Tabs
         value={tab}
@@ -280,44 +268,55 @@ export default function ReservasPage() {
         </Alert>
       )}
 
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 720 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Cliente</TableCell>
-              <TableCell>Plaza</TableCell>
-              <TableCell>Patentes</TableCell>
-              <TableCell>Desde</TableCell>
-              <TableCell>Hasta</TableCell>
-              <TableCell>$/mes</TableCell>
-              <TableCell>{tab === 'cobrar' ? 'Situación' : 'Estado'}</TableCell>
-              <TableCell align="right">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {count === 0 && (
+      {count === 0 ? (
+        <EmptyState
+          message={
+            tab === 'cobrar'
+              ? 'No hay abonos pendientes de cobro.'
+              : 'Todavía no hay abonos.'
+          }
+          actionLabel={tab === 'todos' ? 'Nuevo abono' : undefined}
+          onAction={tab === 'todos' ? () => setDialogOpen(true) : undefined}
+        />
+      ) : (
+        <Box
+          sx={{
+            border: `1px solid ${colors.border}`,
+            borderRadius: '6px',
+            overflow: 'auto',
+            bgcolor: colors.surface,
+          }}
+        >
+          <Table size="small" sx={{ minWidth: 720 }}>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={8} align="center">
-                  No hay abonos
-                </TableCell>
+                <TableCell>Cliente</TableCell>
+                <TableCell>Plaza</TableCell>
+                <TableCell>Patentes</TableCell>
+                <TableCell>Desde</TableCell>
+                <TableCell>Hasta</TableCell>
+                <TableCell>$/mes</TableCell>
+                <TableCell>{tab === 'cobrar' ? 'Situación' : 'Estado'}</TableCell>
+                <TableCell align="right">Acciones</TableCell>
               </TableRow>
-            )}
-            {paged.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.clienteNombre}</TableCell>
-                <TableCell>{r.plazaCodigo}</TableCell>
-                <TableCell>{r.patentes?.join(', ')}</TableCell>
-                <TableCell>{r.fechaInicio}</TableCell>
-                <TableCell>{r.fechaFin || '—'}</TableCell>
-                <TableCell>{formatMoney(r.montoMensual)}</TableCell>
-                <TableCell>
-                  {tab === 'cobrar' ? (
-                    <Chip label={motivoLabel(r)} color={motivoColor(r.motivoCobro)} size="small" />
-                  ) : (
-                    <Chip label={r.estado} color={estadoColor(r.estado)} size="small" />
-                  )}
-                </TableCell>
-                <TableCell align="right">
+            </TableHead>
+            <TableBody>
+              {paged.map((r) => (
+                <TableRow key={r.id} hover>
+                  <TableCell>{r.clienteNombre}</TableCell>
+                  <TableCell>{r.plazaCodigo}</TableCell>
+                  <TableCell>{r.patentes?.join(', ')}</TableCell>
+                  <TableCell>{r.fechaInicio}</TableCell>
+                  <TableCell>{r.fechaFin || '—'}</TableCell>
+                  <TableCell>{formatMoney(r.montoMensual)}</TableCell>
+                  <TableCell>
+                    {tab === 'cobrar' ? (
+                      <Chip label={motivoLabel(r)} color={motivoColor(r.motivoCobro)} size="small" />
+                    ) : (
+                      <Chip label={r.estado} color={estadoColor(r.estado)} size="small" />
+                    )}
+                  </TableCell>
+                  <TableCell align="right">
                   {(r.estado === 'ACTIVA' || r.estado === 'SUSPENDIDA') && (
                     <>
                       <Button size="small" variant="contained" onClick={() => setPagoTarget(r)}>
@@ -350,7 +349,8 @@ export default function ReservasPage() {
           onPageChange={setPage}
           onRowsPerPageChange={setRowsPerPage}
         />
-      </TableContainer>
+        </Box>
+      )}
 
       <PagoAbonoDialog
         open={!!pagoTarget}

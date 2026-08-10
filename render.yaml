@@ -1,0 +1,44 @@
+# Blueprint Render.com — New → Blueprint → este repo.
+# https://dashboard.render.com/blueprints
+services:
+  - type: web
+    name: musical-sniffle
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: docker
+      - key: DB_HOST
+        fromDatabase:
+          name: musical-sniffle-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: musical-sniffle-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: musical-sniffle-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: musical-sniffle-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: musical-sniffle-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_DEMO_DATA
+        value: "true"
+      - key: MP_ENABLED
+        value: "false"
+
+databases:
+  - name: musical-sniffle-db
+    plan: free
+    databaseName: musical_sniffle
+    user: musicalsniffle
