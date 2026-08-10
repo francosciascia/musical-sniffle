@@ -1,0 +1,19 @@
+# Copiá este archivo a application-local.yml y completá los valores.
+# application-local.yml NO se sube a Git (.gitignore).
+
+spring:
+  datasource:
+    password: "TU_PASSWORD_DE_POSTGRES"
+
+app:
+  jwt:
+    # Mínimo 32 caracteres, distinto en cada entorno
+    secret: "cambia-este-jwt-secret-local-minimo-32-chars!!"
+  mercadopago:
+    enabled: true
+    # true = Pruebas. false = producción.
+    sandbox: true
+    # Access Token de MP (Pruebas o Producción). Nunca lo commitees.
+    access-token: "PEGAR_ACCESS_TOKEN_ACA"
+    # Opcional: ngrok + /api/webhooks/mercadopago
+    # notification-url: "https://xxxx.ngrok-free.app/api/webhooks/mercadopago"

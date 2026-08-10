@@ -7,45 +7,175 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  MenuItem,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material'
-import { Printer } from 'lucide-react'
 import api from '../api/client'
-import { MEDIOS_PAGO } from '../utils/mediosPago'
-import ComprobanteEgreso from './ComprobanteEgreso'
+import MedioPagoCobroPanel, {
+  buildCobroBody,
+  formatMoney,
+  validarCobroMedio,
+} from './MedioPagoCobroPanel'
+
+function formatFechaHora(value) {
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return String(value)
+  return d.toLocaleString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 /**
- * Flujo egreso: medio de pago (si corresponde) → cobro → comprobante imprimible.
- * props.estadia: { id, patente, plazaCodigo, abonado, ticket? }
+ * Flujo egreso: preview monto → medio de pago → cobro. Sin ticket de salida.
+ * props.estadia: { id, patente, plazaCodigo, abonado, entrada?, ticket? }
  */
 export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
-  const [medioPago, setMedioPago] = useState('EFECTIVO')
+  const [medio, setMedio] = useState('EFECTIVO')
+  const [pagoExacto, setPagoExacto] = useState(true)
+  const [montoRecibido, setMontoRecibido] = useState('')
+  const [comprobante, setComprobante] = useState('')
+  const [mpInfo, setMpInfo] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingMp, setLoadingMp] = useState(false)
   const [error, setError] = useState('')
-  const [cobro, setCobro] = useState(null)
+  const [listo, setListo] = useState(false)
+  const [resultado, setResultado] = useState(null)
 
   useEffect(() => {
-    if (open) {
-      setMedioPago('EFECTIVO')
-      setError('')
-      setCobro(null)
-      setLoading(false)
+    if (!open || !estadia?.id) return undefined
+
+    setMedio('EFECTIVO')
+    setPagoExacto(true)
+    setMontoRecibido('')
+    setComprobante('')
+    setMpInfo(null)
+    setError('')
+    setListo(false)
+    setResultado(null)
+    setLoading(false)
+    setPreview(null)
+
+    let cancelled = false
+    async function loadPreview() {
+      setLoadingPreview(true)
+      try {
+        const { data } = await api.get(`/estadias/${estadia.id}/calculo`)
+        if (!cancelled) setPreview(data)
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.error || 'No se pudo calcular el monto')
+        }
+      } finally {
+        if (!cancelled) setLoadingPreview(false)
+      }
+    }
+    loadPreview()
+    return () => {
+      cancelled = true
     }
   }, [open, estadia?.id])
 
-  const abonado = !!estadia?.abonado
+  const abonado = !!(preview?.abonado ?? estadia?.abonado)
+  const monto = Number(preview?.monto) || 0
+  const requierePago = !abonado && monto > 0
+  const esperandoQr = requierePago && medio === 'QR' && !!mpInfo?.configurado
+
+  useEffect(() => {
+    if (!open || !esperandoQr || !estadia?.id || listo) return undefined
+
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const { data } = await api.get(`/estadias/${estadia.id}/mercadopago-estado`)
+        if (cancelled || !data?.aprobado) return
+        // Recargar cobro cerrado
+        try {
+          const cobro = await api.get(`/estadias/${estadia.id}/calculo`)
+          // estadia ya cerrada → calculo puede fallar 409; usar mensaje simple
+          setResultado({
+            patente: estadia.patente,
+            monto: preview?.monto ?? monto,
+            abonado: false,
+          })
+        } catch {
+          setResultado({
+            patente: estadia.patente,
+            monto: preview?.monto ?? monto,
+            abonado: false,
+          })
+        }
+        setListo(true)
+        onSuccess?.(data)
+      } catch {
+        /* seguir */
+      }
+    }
+
+    tick()
+    const id = setInterval(tick, 2500)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [open, esperandoQr, estadia, listo, preview?.monto, monto, onSuccess])
+
+  async function generarQr() {
+    if (!estadia?.id) return
+    setLoadingMp(true)
+    setError('')
+    try {
+      const { data } = await api.post(`/estadias/${estadia.id}/mercadopago-preferencia`)
+      setMpInfo(data)
+      if (!data.configurado) {
+        setError(data.mensaje || 'Mercado Pago no configurado')
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo crear la preferencia de Mercado Pago')
+    } finally {
+      setLoadingMp(false)
+    }
+  }
 
   async function confirmar() {
     if (!estadia?.id) return
+
+    if (requierePago) {
+      const msg = validarCobroMedio({
+        medio,
+        monto,
+        pagoExacto,
+        montoRecibido,
+        comprobante,
+      })
+      if (msg) {
+        setError(msg)
+        return
+      }
+    }
+
     setLoading(true)
     setError('')
     try {
-      const body = abonado ? {} : { medioPago }
+      const body = requierePago
+        ? buildCobroBody({
+            medio,
+            monto,
+            pagoExacto,
+            montoRecibido,
+            comprobante,
+            mpInfo,
+          })
+        : {}
       const { data } = await api.post(`/estadias/${estadia.id}/cerrar`, body)
-      setCobro(data)
+      setResultado(data)
+      setListo(true)
       onSuccess?.(data)
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo registrar el egreso')
@@ -60,73 +190,109 @@ export default function EgresoDialog({ open, estadia, onClose, onSuccess }) {
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth className="ticket-dialog">
-      <DialogTitle>{cobro ? 'Egreso registrado' : 'Confirmar egreso'}</DialogTitle>
-      <DialogContent>
+    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+      <DialogTitle>{listo ? 'Egreso registrado' : 'Confirmar egreso'}</DialogTitle>
+      <DialogContent sx={{ pt: '12px !important' }}>
         {error && (
           <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError('')}>
             {error}
           </Alert>
         )}
 
-        {!cobro && estadia && (
+        {!listo && estadia && (
           <Stack spacing={1.5} sx={{ pt: 0.5 }}>
             <Box>
               <Typography className="mono" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
                 {estadia.patente}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Plaza {estadia.plazaCodigo || '—'}
+                Plaza {estadia.plazaCodigo || 'Sin asignar'}
                 {abonado ? ' · Abonado (sin cobro)' : ''}
               </Typography>
               {estadia.ticket?.codigo && (
-                <Typography variant="caption" className="mono" color="text.secondary">
-                  Ticket {estadia.ticket.codigo}
+                <Typography variant="caption" className="mono" color="text.secondary" display="block">
+                  Ticket ingreso {estadia.ticket.codigo}
                 </Typography>
               )}
+              <Typography variant="body2" sx={{ mt: 0.75 }}>
+                Ingreso:{' '}
+                <Box component="span" className="mono" sx={{ fontWeight: 600 }}>
+                  {formatFechaHora(preview?.entrada || estadia.entrada) ||
+                    (loadingPreview ? '…' : '—')}
+                </Box>
+              </Typography>
+              <Typography className="mono" sx={{ mt: 0.5, fontWeight: 700, fontSize: '1.15rem' }}>
+                {loadingPreview
+                  ? 'Calculando…'
+                  : abonado || monto === 0
+                    ? 'Sin cargo'
+                    : formatMoney(monto)}
+              </Typography>
             </Box>
 
-            {!abonado && (
-              <TextField
-                select
-                label="Medio de pago"
-                value={medioPago}
-                onChange={(e) => setMedioPago(e.target.value)}
-                fullWidth
-              >
-                {MEDIOS_PAGO.map((m) => (
-                  <MenuItem key={m.value} value={m.value}>
-                    {m.label}
-                  </MenuItem>
-                ))}
-              </TextField>
+            {requierePago && (
+              <MedioPagoCobroPanel
+                monto={monto}
+                medio={medio}
+                onMedioChange={(v) => {
+                  setMedio(v)
+                  setError('')
+                  setMpInfo(null)
+                }}
+                pagoExacto={pagoExacto}
+                onPagoExactoChange={setPagoExacto}
+                montoRecibido={montoRecibido}
+                onMontoRecibidoChange={setMontoRecibido}
+                comprobante={comprobante}
+                onComprobanteChange={setComprobante}
+                mpInfo={mpInfo}
+                onGenerarQr={generarQr}
+                loadingMp={loadingMp}
+                esperandoPago={esperandoQr}
+              />
             )}
           </Stack>
         )}
 
-        {cobro && (
-          <Box className="ticket-print-root" sx={{ pt: 1 }}>
-            <ComprobanteEgreso cobro={cobro} />
-          </Box>
+        {listo && resultado && (
+          <Stack spacing={0.75} sx={{ pt: 0.5 }}>
+            <Alert severity="success">Salida registrada. No se imprime ticket de egreso.</Alert>
+            <Typography className="mono" sx={{ fontWeight: 700 }}>
+              {resultado.patente}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {resultado.abonado || Number(resultado.monto) === 0
+                ? 'Sin cargo'
+                : `Cobrado ${formatMoney(resultado.monto)}`}
+            </Typography>
+          </Stack>
         )}
       </DialogContent>
-      <DialogActions className="no-print" sx={{ px: 2, pb: 2 }}>
-        {!cobro ? (
+      <DialogActions sx={{ px: 2, pb: 2 }}>
+        {!listo ? (
           <>
             <Button onClick={handleClose} disabled={loading}>
-              Cancelar
+              {esperandoQr ? 'Cerrar' : 'Cancelar'}
             </Button>
-            <Button variant="contained" color="secondary" onClick={confirmar} disabled={loading}>
-              {loading ? 'Procesando…' : abonado ? 'Confirmar salida' : 'Cobrar y egresar'}
-            </Button>
+            {!esperandoQr && (
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={confirmar}
+                disabled={loading || loadingPreview}
+              >
+                {loading
+                  ? 'Procesando…'
+                  : abonado || !requierePago
+                    ? 'Confirmar salida'
+                    : 'Cobrar y egresar'}
+              </Button>
+            )}
           </>
         ) : (
-          <>
-            <Button onClick={handleClose}>Cerrar</Button>
-            <Button variant="contained" startIcon={<Printer size={16} />} onClick={() => window.print()}>
-              Imprimir
-            </Button>
-          </>
+          <Button variant="contained" onClick={handleClose}>
+            Listo
+          </Button>
         )}
       </DialogActions>
     </Dialog>

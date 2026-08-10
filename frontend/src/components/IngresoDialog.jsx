@@ -114,21 +114,48 @@ export default function IngresoDialog({ open, plaza, onClose, onSuccess }) {
               </Typography>
             )}
           </DialogTitle>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
+          <DialogContent
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+              pt: '16px !important',
+            }}
+          >
             {error && <Alert severity="error">{error}</Alert>}
 
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} alignItems="flex-start">
               <TextField
                 label="Plaza"
-                value={plazaElegida ? plazaElegida.codigo : 'Sin asignar'}
+                value={plazaElegida ? plazaElegida.codigo : ''}
+                placeholder="Sin asignar"
                 fullWidth
-                InputProps={{ readOnly: true, className: 'mono' }}
+                InputProps={{
+                  readOnly: true,
+                }}
+                inputProps={{
+                  className: plazaElegida ? 'mono' : undefined,
+                }}
+                helperText={plazaElegida ? 'Opcional · tocá Mapa para cambiar' : 'Opcional'}
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  '& .MuiInputBase-input': {
+                    overflow: 'visible',
+                    textOverflow: 'clip',
+                    whiteSpace: 'nowrap',
+                  },
+                  '& .MuiInputBase-input::placeholder': {
+                    opacity: 0.75,
+                    color: 'text.secondary',
+                  },
+                }}
               />
               <Button
                 variant="outlined"
                 startIcon={<MapPin size={16} />}
                 onClick={() => setMapOpen(true)}
-                sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+                sx={{ flexShrink: 0, whiteSpace: 'nowrap', mt: 0.5 }}
               >
                 Mapa
               </Button>

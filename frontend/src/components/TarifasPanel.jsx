@@ -64,7 +64,7 @@ export default function TarifasPanel() {
       await api.put(`/admin/tarifas/${editando.id}`, {
         precioPorHora: Number(form.precioPorHora),
         montoMinimo: form.montoMinimo ? Number(form.montoMinimo) : null,
-        minutosParaMediaHora: form.minutosParaMediaHora ? Number(form.minutosParaMediaHora) : null,
+        minutosParaMediaHora: editando.minutosParaMediaHora ?? null,
         precioMensual: form.precioMensual ? Number(form.precioMensual) : null,
         activa: form.activa,
       })
@@ -80,8 +80,9 @@ export default function TarifasPanel() {
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Precios por hora (egreso) y abono mensual sugerido por tipo de vehículo. Usá montos redondos
-        (ej. 45.000, 50.000).
+        El egreso cobra de a <strong>30 minutos</strong> (fracción iniciada): la media hora vale la
+        mitad del precio por hora. Ej: $500/h → $250 los primeros 30 min, $500 hasta la hora, $750 a
+        los 90 min. El mínimo (si hay) se aplica cuando el cálculo da menos.
       </Typography>
 
       {error && (
@@ -91,13 +92,13 @@ export default function TarifasPanel() {
       )}
 
       <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 620 }}>
+        <Table size="small" sx={{ minWidth: 560 }}>
           <TableHead>
             <TableRow>
               <TableCell>Tipo</TableCell>
               <TableCell>$/hora</TableCell>
+              <TableCell>$/30 min</TableCell>
               <TableCell>Mínimo</TableCell>
-              <TableCell>Min. media hora</TableCell>
               <TableCell>$/mes</TableCell>
               <TableCell>Activa</TableCell>
               <TableCell align="right">Acción</TableCell>
@@ -108,8 +109,12 @@ export default function TarifasPanel() {
               <TableRow key={t.id}>
                 <TableCell>{t.tipoVehiculo}</TableCell>
                 <TableCell>{formatMoney(t.precioPorHora)}</TableCell>
+                <TableCell>
+                  {t.precioPorHora != null
+                    ? formatMoney(Math.round(Number(t.precioPorHora) * 50) / 100)
+                    : '—'}
+                </TableCell>
                 <TableCell>{formatMoney(t.montoMinimo)}</TableCell>
-                <TableCell>{t.minutosParaMediaHora ?? '—'}</TableCell>
                 <TableCell>{formatMoney(t.precioMensual)}</TableCell>
                 <TableCell>{t.activa ? 'Sí' : 'No'}</TableCell>
                 <TableCell align="right">
@@ -125,13 +130,18 @@ export default function TarifasPanel() {
 
       <Dialog open={!!editando} onClose={() => setEditando(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Editar tarifa — {editando?.tipoVehiculo}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2.5 }}>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
           <TextField
             label="Precio por hora"
             type="number"
             value={form.precioPorHora}
             onChange={(e) => setForm({ ...form, precioPorHora: e.target.value })}
             fullWidth
+            helperText={
+              form.precioPorHora
+                ? `Media hora (30 min): ${formatMoney(Math.round(Number(form.precioPorHora) * 50) / 100)}`
+                : 'Se cobra por bloques de 30 minutos'
+            }
             InputLabelProps={{ shrink: true }}
           />
           <TextField
@@ -140,14 +150,7 @@ export default function TarifasPanel() {
             value={form.montoMinimo}
             onChange={(e) => setForm({ ...form, montoMinimo: e.target.value })}
             fullWidth
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="Minutos para media hora (opcional)"
-            type="number"
-            value={form.minutosParaMediaHora}
-            onChange={(e) => setForm({ ...form, minutosParaMediaHora: e.target.value })}
-            fullWidth
+            helperText="Si el cálculo por bloques da menos, se cobra este mínimo"
             InputLabelProps={{ shrink: true }}
           />
           <TextField

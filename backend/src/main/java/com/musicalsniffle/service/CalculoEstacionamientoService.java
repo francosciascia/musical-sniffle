@@ -14,7 +14,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CalculoEstacionamientoService {
 
-    private static final BigDecimal MINUTOS_POR_HORA = BigDecimal.valueOf(60);
+    /** Cobro por media hora iniciada (fracción de 30 min). */
+    static final int BLOQUE_MINUTOS = 30;
 
     private final TarifaRepository tarifaRepository;
 
@@ -30,37 +31,37 @@ public class CalculoEstacionamientoService {
         Duration duracion = Duration.between(estadia.getEntrada(), estadia.getSalida());
 
         return switch (tipo) {
-            case AUTO -> calcularPorHora(tarifa.getPrecioPorHora(), duracion);
-            case CAMIONETA -> calcularConMinimo(tarifa, duracion);
-            case MOTO -> calcularMoto(tarifa, duracion);
-            case CAMION -> calcularConMinimo(tarifa, duracion);
+            case AUTO -> calcularPorBloques(tarifa.getPrecioPorHora(), duracion);
+            case CAMIONETA, CAMION -> calcularConMinimo(tarifa, duracion);
+            case MOTO -> calcularPorBloques(tarifa.getPrecioPorHora(), duracion);
         };
     }
 
-    private BigDecimal calcularPorHora(BigDecimal precioPorHora, Duration duracion) {
-        long minutos = Math.max(duracion.toMinutes(), 1);
-        BigDecimal horas = BigDecimal.valueOf(minutos)
-                .divide(MINUTOS_POR_HORA, 4, RoundingMode.HALF_UP);
-        return precioPorHora.multiply(horas).setScale(2, RoundingMode.HALF_UP);
+    /**
+     * Precio = (precioPorHora / 2) × cantidad de bloques de 30 min iniciados.
+     * Ej: $500/h → $250 cada media hora; 31 min = 2 bloques = $500.
+     */
+    private BigDecimal calcularPorBloques(BigDecimal precioPorHora, Duration duracion) {
+        long bloques = bloquesDeMediaHora(duracion);
+        BigDecimal precioMediaHora = precioPorHora
+                .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP);
+        return precioMediaHora
+                .multiply(BigDecimal.valueOf(bloques))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calcularConMinimo(Tarifa tarifa, Duration duracion) {
-        BigDecimal monto = calcularPorHora(tarifa.getPrecioPorHora(), duracion);
+        BigDecimal monto = calcularPorBloques(tarifa.getPrecioPorHora(), duracion);
         if (tarifa.getMontoMinimo() != null) {
             monto = monto.max(tarifa.getMontoMinimo());
         }
         return monto.setScale(2, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal calcularMoto(Tarifa tarifa, Duration duracion) {
-        long minutos = Math.max(duracion.toMinutes(), 1);
-        Integer limiteMediaHora = tarifa.getMinutosParaMediaHora();
-
-        if (limiteMediaHora != null && minutos <= limiteMediaHora) {
-            return tarifa.getPrecioPorHora()
-                    .divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
-        }
-
-        return calcularPorHora(tarifa.getPrecioPorHora(), duracion);
+    /** Al menos 1 bloque si hubo estadía; redondea hacia arriba cada 30 min. */
+    static long bloquesDeMediaHora(Duration duracion) {
+        long segundos = Math.max(duracion.getSeconds(), 1);
+        long minutos = (segundos + 59) / 60; // minutos iniciados
+        return (minutos + BLOQUE_MINUTOS - 1) / BLOQUE_MINUTOS;
     }
 }

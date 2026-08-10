@@ -71,7 +71,7 @@ export default function TicketSlip({ ticket }) {
         align="center"
         sx={{ mt: 1.25, fontSize: '0.6rem', color: colors.cementDark, lineHeight: 1.35 }}
       >
-        Conservá este ticket para el egreso.
+        Conservá este ticket hasta la salida.
         <br />
         Gracias por su visita.
       </Typography>

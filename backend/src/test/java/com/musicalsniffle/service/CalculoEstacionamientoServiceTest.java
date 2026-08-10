@@ -10,6 +10,7 @@ import com.musicalsniffle.model.Tarifa;
 import com.musicalsniffle.model.TipoVehiculo;
 import com.musicalsniffle.repository.TarifaRepository;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,39 +39,68 @@ class CalculoEstacionamientoServiceTest {
     }
 
     @Test
-    void autoCobraPorHora() {
-        mockTarifa(TipoVehiculo.AUTO, "500", null, null);
+    void autoCobraPorHoraExactaDosBloques() {
+        mockTarifa(TipoVehiculo.AUTO, "500", null);
         Estadia estadia = estadia(TipoVehiculo.AUTO, 60, false);
         assertEquals(new BigDecimal("500.00"), service.calcular(estadia));
     }
 
     @Test
+    void autoPrimeraMediaHora() {
+        mockTarifa(TipoVehiculo.AUTO, "500", null);
+        Estadia estadia = estadia(TipoVehiculo.AUTO, 20, false);
+        assertEquals(new BigDecimal("250.00"), service.calcular(estadia));
+    }
+
+    @Test
+    void autoFraccionIniciaSegundoBloque() {
+        mockTarifa(TipoVehiculo.AUTO, "500", null);
+        Estadia estadia = estadia(TipoVehiculo.AUTO, 31, false);
+        assertEquals(new BigDecimal("500.00"), service.calcular(estadia));
+    }
+
+    @Test
+    void autoNoventaMinutosTresBloques() {
+        mockTarifa(TipoVehiculo.AUTO, "500", null);
+        Estadia estadia = estadia(TipoVehiculo.AUTO, 90, false);
+        assertEquals(new BigDecimal("750.00"), service.calcular(estadia));
+    }
+
+    @Test
     void camionetaTieneMinimo() {
-        mockTarifa(TipoVehiculo.CAMIONETA, "700", "800", null);
+        mockTarifa(TipoVehiculo.CAMIONETA, "700", "800");
         Estadia estadia = estadia(TipoVehiculo.CAMIONETA, 10, false);
         assertEquals(new BigDecimal("800.00"), service.calcular(estadia));
     }
 
     @Test
     void motoCobraMediaHoraSiEsCorta() {
-        mockTarifa(TipoVehiculo.MOTO, "300", null, 30);
+        mockTarifa(TipoVehiculo.MOTO, "300", null);
         Estadia estadia = estadia(TipoVehiculo.MOTO, 20, false);
         assertEquals(new BigDecimal("150.00"), service.calcular(estadia));
     }
 
     @Test
     void camionTieneMinimoAlto() {
-        mockTarifa(TipoVehiculo.CAMION, "1200", "2000", null);
+        mockTarifa(TipoVehiculo.CAMION, "1200", "2000");
         Estadia estadia = estadia(TipoVehiculo.CAMION, 15, false);
         assertEquals(new BigDecimal("2000.00"), service.calcular(estadia));
     }
 
-    private void mockTarifa(TipoVehiculo tipo, String precioHora, String minimo, Integer minutosMediaHora) {
+    @Test
+    void bloquesDeMediaHoraRedondeaArriba() {
+        assertEquals(1, CalculoEstacionamientoService.bloquesDeMediaHora(Duration.ofMinutes(1)));
+        assertEquals(1, CalculoEstacionamientoService.bloquesDeMediaHora(Duration.ofMinutes(30)));
+        assertEquals(2, CalculoEstacionamientoService.bloquesDeMediaHora(Duration.ofMinutes(31)));
+        assertEquals(2, CalculoEstacionamientoService.bloquesDeMediaHora(Duration.ofMinutes(60)));
+        assertEquals(3, CalculoEstacionamientoService.bloquesDeMediaHora(Duration.ofMinutes(61)));
+    }
+
+    private void mockTarifa(TipoVehiculo tipo, String precioHora, String minimo) {
         Tarifa tarifa = Tarifa.builder()
                 .tipoVehiculo(tipo)
                 .precioPorHora(new BigDecimal(precioHora))
                 .montoMinimo(minimo != null ? new BigDecimal(minimo) : null)
-                .minutosParaMediaHora(minutosMediaHora)
                 .activa(true)
                 .build();
 

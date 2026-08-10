@@ -27,16 +27,11 @@ public class HistorialController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) TipoEvento tipo) {
 
-        if (tipo != null) {
-            return historialService.listarPorTipo(tipo).stream()
-                    .map(HistorialResponse::from)
-                    .toList();
-        }
-
         LocalDateTime inicio = (desde != null ? desde : LocalDate.now().minusDays(30)).atStartOfDay();
         LocalDateTime fin = (hasta != null ? hasta : LocalDate.now()).atTime(LocalTime.MAX);
 
         return historialService.listarPorPeriodo(inicio, fin).stream()
+                .filter(h -> tipo == null || h.getTipoEvento() == tipo)
                 .map(HistorialResponse::from)
                 .toList();
     }

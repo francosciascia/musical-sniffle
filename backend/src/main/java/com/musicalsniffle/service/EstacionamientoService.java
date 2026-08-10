@@ -264,6 +264,49 @@ public class EstacionamientoService {
         return EstadiaResponse.from(guardada, TicketResponse.from(ticket), avisos);
     }
 
+    @Transactional(readOnly = true)
+    public CalculoResponse previsualizarCobro(Long id) {
+        Estadia estadia = estadiaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Estadia no encontrada: " + id));
+
+        if (estadia.getEstado() == EstadoEstadia.CERRADA) {
+            throw new IllegalStateException("La estadía ya está cerrada");
+        }
+
+        boolean abonado = estadia.isAbonado();
+        if (!abonado) {
+            Optional<Reserva> reservaActiva = reservaService.buscarActivaPorAuto(estadia.getAuto().getId());
+            if (reservaActiva.isPresent()) {
+                abonado = true;
+            }
+        }
+
+        LocalDateTime salida = LocalDateTime.now();
+        BigDecimal monto;
+        if (abonado) {
+            monto = BigDecimal.ZERO;
+        } else {
+            LocalDateTime salidaOriginal = estadia.getSalida();
+            estadia.setSalida(salida);
+            monto = calculoService.calcular(estadia);
+            estadia.setSalida(salidaOriginal);
+        }
+
+        String ticketCodigo = ticketService.buscarPorEstadiaId(estadia.getId()).getCodigo();
+
+        return CalculoResponse.builder()
+                .estadiaId(estadia.getId())
+                .patente(estadia.getAuto().getPatente())
+                .tipoVehiculo(estadia.getAuto().getTipo().name())
+                .monto(monto)
+                .abonado(abonado)
+                .ticketCodigo(ticketCodigo)
+                .plazaCodigo(estadia.getPlaza() != null ? estadia.getPlaza().getCodigo() : null)
+                .entrada(estadia.getEntrada())
+                .salida(salida)
+                .build();
+    }
+
     @Transactional
     public CalculoResponse cerrarEstadia(Long id, Persona operador, CerrarEstadiaRequest request) {
         Estadia estadia = estadiaRepository.findById(id)
@@ -290,6 +333,9 @@ public class EstacionamientoService {
         estadiaRepository.save(estadia);
 
         MedioPago medioPago;
+        BigDecimal recibido = null;
+        BigDecimal vuelto = null;
+        String ref = null;
         if (estadia.isAbonado() || monto.compareTo(BigDecimal.ZERO) == 0) {
             medioPago = MedioPago.ABONADO;
         } else {
@@ -300,6 +346,27 @@ public class EstacionamientoService {
                 throw new IllegalArgumentException("Medio de pago inválido para un cobro");
             }
             medioPago = request.getMedioPago();
+            ref = request.getReferenciaComprobante() == null
+                    ? null
+                    : request.getReferenciaComprobante().trim();
+            recibido = request.getMontoRecibido();
+
+            if (medioPago == MedioPago.EFECTIVO) {
+                if (recibido == null) {
+                    recibido = monto;
+                }
+                if (recibido.compareTo(monto) < 0) {
+                    throw new IllegalArgumentException(
+                            "El monto recibido ($" + recibido + ") es menor al cobro ($" + monto + ")");
+                }
+                vuelto = recibido.subtract(monto);
+            }
+            if (medioPago == MedioPago.TRANSFERENCIA) {
+                if (ref == null || ref.isBlank()) {
+                    throw new IllegalArgumentException(
+                            "Indicá el N° o referencia del comprobante de transferencia");
+                }
+            }
         }
 
         historialService.registrar(
@@ -314,9 +381,30 @@ public class EstacionamientoService {
                 medioPago);
 
         if (monto.compareTo(BigDecimal.ZERO) > 0) {
+            StringBuilder desc = new StringBuilder();
+            desc.append("Pago de $").append(monto)
+                    .append(" (").append(medioPago.name()).append(") por estadía #")
+                    .append(estadia.getId());
+            if (medioPago == MedioPago.EFECTIVO && recibido != null) {
+                desc.append(" | recibido $").append(recibido);
+                if (vuelto != null && vuelto.compareTo(BigDecimal.ZERO) > 0) {
+                    desc.append(" | vuelto $").append(vuelto);
+                } else {
+                    desc.append(" | pago exacto");
+                }
+            }
+            if (ref != null && !ref.isBlank()) {
+                desc.append(" | comprobante ").append(ref);
+            }
+            if (request != null
+                    && request.getMercadopagoId() != null
+                    && !request.getMercadopagoId().isBlank()) {
+                desc.append(" | MP ").append(request.getMercadopagoId().trim());
+            }
+
             historialService.registrar(
                     TipoEvento.PAGO,
-                    "Pago de $" + monto + " (" + medioPago.name() + ") por estadía #" + estadia.getId(),
+                    desc.toString(),
                     operador,
                     "Estadia",
                     estadia.getId(),

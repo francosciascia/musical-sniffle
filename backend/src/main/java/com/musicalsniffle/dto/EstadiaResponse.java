@@ -1,6 +1,7 @@
 package com.musicalsniffle.dto;
 
 import com.musicalsniffle.model.Estadia;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,6 +14,7 @@ public class EstadiaResponse {
     private String patente;
     private String plazaCodigo;
     private boolean abonado;
+    private LocalDateTime entrada;
     private TicketResponse ticket;
     /** Avisos blandos (abono por vencer, en gracia, etc.). */
     private List<String> avisos;
@@ -27,6 +29,7 @@ public class EstadiaResponse {
                 .patente(estadia.getAuto().getPatente())
                 .plazaCodigo(estadia.getPlaza() != null ? estadia.getPlaza().getCodigo() : null)
                 .abonado(estadia.isAbonado())
+                .entrada(estadia.getEntrada())
                 .ticket(ticket)
                 .avisos(avisos == null ? List.of() : avisos)
                 .build();

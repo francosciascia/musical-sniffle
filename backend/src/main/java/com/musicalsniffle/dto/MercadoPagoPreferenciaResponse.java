@@ -13,6 +13,9 @@ public class MercadoPagoPreferenciaResponse {
     private String preferenceId;
     private String initPoint;
     private String sandboxInitPoint;
+    /** Link correcto según modo prueba/producción. */
+    private String checkoutUrl;
+    private boolean sandbox;
     private BigDecimal monto;
     private String externalReference;
 }

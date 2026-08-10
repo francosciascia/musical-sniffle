@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Box,
   Button,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -23,6 +24,7 @@ import { usePagedRows } from '../hooks/usePagedRows'
 import { getRol, isAdmin } from '../utils/auth'
 import { downloadCsv } from '../utils/exportCsv'
 import { labelMedioPago } from '../utils/mediosPago'
+import { TIPOS_EVENTO, labelTipoEvento } from '../utils/eventos'
 
 export default function HistorialPage() {
   const rol = getRol()
@@ -32,8 +34,15 @@ export default function HistorialPage() {
   const [error, setError] = useState('')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
-  const { page, rowsPerPage, setPage, setRowsPerPage, paged, count } = usePagedRows(eventos, {
-    resetKey: `${desde}|${hasta}`,
+  const [tipo, setTipo] = useState('')
+
+  const filtrados = useMemo(() => {
+    if (!tipo) return eventos
+    return eventos.filter((e) => e.tipoEvento === tipo)
+  }, [eventos, tipo])
+
+  const { page, rowsPerPage, setPage, setRowsPerPage, paged, count } = usePagedRows(filtrados, {
+    resetKey: `${desde}|${hasta}|${tipo}`,
   })
 
   const cargar = useCallback(async () => {
@@ -64,7 +73,7 @@ export default function HistorialPage() {
     downloadCsv(
       `historial_${desde || 'inicio'}_${hasta || 'hoy'}.csv`,
       ['Fecha', 'Evento', 'Descripcion', 'Usuario', 'Monto', 'MedioPago'],
-      eventos.map((e) => [
+      filtrados.map((e) => [
         e.fechaHora?.replace('T', ' ').slice(0, 19) || '',
         e.tipoEvento,
         e.descripcion,
@@ -76,7 +85,7 @@ export default function HistorialPage() {
   }
 
   function exportCaja() {
-    const pagos = eventos.filter((e) => e.tipoEvento === 'PAGO' || e.tipoEvento === 'PAGO_MENSUAL')
+    const pagos = filtrados.filter((e) => e.tipoEvento === 'PAGO' || e.tipoEvento === 'PAGO_MENSUAL')
     downloadCsv(
       `caja_${desde || 'inicio'}_${hasta || 'hoy'}.csv`,
       ['Fecha', 'Tipo', 'Descripcion', 'Usuario', 'Monto', 'MedioPago'],
@@ -108,7 +117,7 @@ export default function HistorialPage() {
             variant="outlined"
             startIcon={<Download size={16} />}
             onClick={exportHistorial}
-            disabled={!eventos.length}
+            disabled={!filtrados.length}
           >
             CSV historial
           </Button>
@@ -116,7 +125,7 @@ export default function HistorialPage() {
             variant="outlined"
             startIcon={<Download size={16} />}
             onClick={exportCaja}
-            disabled={!eventos.some((e) => e.tipoEvento === 'PAGO' || e.tipoEvento === 'PAGO_MENSUAL')}
+            disabled={!filtrados.some((e) => e.tipoEvento === 'PAGO' || e.tipoEvento === 'PAGO_MENSUAL')}
           >
             CSV caja
           </Button>
@@ -136,6 +145,20 @@ export default function HistorialPage() {
           value={hasta}
           onChange={(e) => setHasta(e.target.value)}
         />
+        <TextField
+          select
+          label="Evento"
+          size="small"
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          {TIPOS_EVENTO.map((t) => (
+            <MenuItem key={t.value || 'all'} value={t.value}>
+              {t.label}
+            </MenuItem>
+          ))}
+        </TextField>
         <Button variant="outlined" onClick={cargar}>
           Filtrar
         </Button>
@@ -172,14 +195,14 @@ export default function HistorialPage() {
             {count === 0 && (
               <TableRow>
                 <TableCell colSpan={6} align="center">
-                  Sin eventos en el período
+                  Sin eventos{tipo ? ` de tipo “${labelTipoEvento(tipo)}”` : ''} en el período
                 </TableCell>
               </TableRow>
             )}
             {paged.map((e) => (
               <TableRow key={e.id}>
                 <TableCell>{e.fechaHora?.replace('T', ' ').slice(0, 16)}</TableCell>
-                <TableCell>{e.tipoEvento}</TableCell>
+                <TableCell>{labelTipoEvento(e.tipoEvento)}</TableCell>
                 <TableCell>{e.descripcion}</TableCell>
                 <TableCell>{e.personaEmail || '—'}</TableCell>
                 <TableCell>{labelMedioPago(e.medioPago)}</TableCell>

@@ -16,6 +16,8 @@ public interface HistorialRepository extends JpaRepository<Historial, Long> {
 
     List<Historial> findByTipoEventoOrderByFechaHoraDesc(TipoEvento tipoEvento);
 
+    boolean existsByDescripcionContainingIgnoreCase(String fragment);
+
     @Query("""
             SELECT COALESCE(SUM(h.monto), 0) FROM Historial h
             WHERE h.tipoEvento IN :tipos

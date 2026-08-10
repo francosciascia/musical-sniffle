@@ -5,9 +5,12 @@ import com.musicalsniffle.dto.AutoResponse;
 import com.musicalsniffle.dto.CalculoResponse;
 import com.musicalsniffle.dto.CerrarEstadiaRequest;
 import com.musicalsniffle.dto.EstadiaResponse;
+import com.musicalsniffle.dto.MercadoPagoPagoEstadoResponse;
+import com.musicalsniffle.dto.MercadoPagoPreferenciaResponse;
 import com.musicalsniffle.dto.TicketResponse;
 import com.musicalsniffle.security.UserPrincipal;
 import com.musicalsniffle.service.EstacionamientoService;
+import com.musicalsniffle.service.MercadoPagoService;
 import com.musicalsniffle.service.TicketService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -30,6 +33,7 @@ public class EstacionamientoController {
 
     private final EstacionamientoService estacionamientoService;
     private final TicketService ticketService;
+    private final MercadoPagoService mercadoPagoService;
 
     @GetMapping("/autos")
     public List<AutoResponse> listarAutos() {
@@ -42,6 +46,21 @@ public class EstacionamientoController {
             @Valid @RequestBody AutoRequest request,
             @AuthenticationPrincipal UserPrincipal user) {
         return AutoResponse.from(estacionamientoService.crearAuto(request, user.getPersona()));
+    }
+
+    @GetMapping("/estadias/{id}/calculo")
+    public CalculoResponse previsualizarCobro(@PathVariable Long id) {
+        return estacionamientoService.previsualizarCobro(id);
+    }
+
+    @PostMapping("/estadias/{id}/mercadopago-preferencia")
+    public MercadoPagoPreferenciaResponse preferenciaEgreso(@PathVariable Long id) {
+        return mercadoPagoService.crearPreferenciaEstadia(id);
+    }
+
+    @GetMapping("/estadias/{id}/mercadopago-estado")
+    public MercadoPagoPagoEstadoResponse estadoPagoEgreso(@PathVariable Long id) {
+        return mercadoPagoService.consultarEstadoEstadia(id);
     }
 
     @PostMapping("/estadias/{id}/cerrar")
