@@ -69,52 +69,21 @@ Editá `application-local.yml`:
 
 `application-local.yml` **no se sube a Git**.
 
-## Publicar online
+## Publicar online (gratis)
 
-La app va en **un solo Docker** (frontend + API). Elegí una plataforma:
+Para **Java + Postgres + Docker**, lo que sigue siendo **gratis** (con límites) es **Render free**.  
+Railway / Fly / Koyeb ya no sirven bien como “siempre gratis” para este stack.
 
-### Opción A — Railway (recomendada si no querés Render)
-
-1. Entrá a [railway.app](https://railway.app) → login con GitHub.
-2. **New Project** → **Deploy from GitHub repo** → `musical-sniffle`.
-3. En el servicio que crea, confirmá que usa el `Dockerfile` de la raíz.
-4. **Add Plugin / Database** → **PostgreSQL**.
-5. En el servicio **app**, variables:
-
-| Variable | Valor |
-|----------|--------|
-| `SPRING_PROFILES_ACTIVE` | `docker` |
-| `DB_HOST` | `${{Postgres.PGHOST}}` (o el host que te muestre Railway) |
-| `DB_PORT` | `${{Postgres.PGPORT}}` |
-| `DB_NAME` | `${{Postgres.PGDATABASE}}` |
-| `DB_USERNAME` | `${{Postgres.PGUSER}}` |
-| `DB_PASSWORD` | `${{Postgres.PGPASSWORD}}` |
-| `JWT_SECRET` | un string largo (≥ 32 chars) |
-| `APP_DEMO_DATA` | `true` |
-| `MP_ENABLED` | `false` |
-
-En la UI de Railway, al referenciar el plugin Postgres, suelen aparecer como `PGHOST`, `PGPORT`, etc.: usá **Variable Reference** para no copiar secretos a mano.
-
-6. **Settings → Networking → Generate Domain** → te da una URL pública `*.up.railway.app`.
-
-> Railway da crédito gratis mensual; si se acaba, el servicio se pausa hasta el próximo ciclo o hasta que cargues saldo.
-
-### Opción B — Render
+### Render free (recomendada)
 
 1. [Render Blueprints](https://dashboard.render.com/blueprints) → **New Blueprint Instance**.
-2. Conectá el repo (usa `render.yaml`).
-3. Aplicá el blueprint (Web free + Postgres free).
-4. URL `https://musical-sniffle-….onrender.com`.
+2. Conectá el repo `francosciascia/musical-sniffle` (usa `render.yaml`).
+3. Aplicá el blueprint (Web **free** + Postgres **free**).
+4. Cuando termine el deploy: URL `https://musical-sniffle-….onrender.com`.
 
-> El plan free **duerme** tras inactividad (~1 min al despertar).
-
-### Opción C — VPS / PC con Docker
-
-```powershell
-docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
-```
-
-App: http://localhost:8080 (o la IP del VPS en el puerto 8080).
+Límites del free:
+- La web **se duerme** sin tráfico (~15 min); el primer ingreso puede tardar ~1 minuto.
+- El Postgres free es de **prueba** (caduca ~30 días). Para una demo corta alcanza; después hay que recrearlo o pagar.
 
 ### Logins de demo (`APP_DEMO_DATA=true`)
 
@@ -122,6 +91,14 @@ App: http://localhost:8080 (o la IP del VPS en el puerto 8080).
 |---------|----------|
 | `admin@musicalsniffle.com` | `admin123` |
 | `operador.demo@musicalsniffle.com` | `demo123` |
+
+### Probar en tu PC (también gratis)
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
+```
+
+App: http://localhost:8080
 
 ### 3. Backend
 
